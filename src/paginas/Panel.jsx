@@ -157,14 +157,36 @@ export default function Panel() {
               <span className="enlace-panel__flecha" aria-hidden="true">→</span>
             </Link>
 
-            <Link className="enlace-panel" to="/auditoria">
-              <span className="enlace-panel__icono" aria-hidden="true">🕓</span>
+            <Link className="enlace-panel" to="/mapa">
+              <span className="enlace-panel__icono" aria-hidden="true">🗺️</span>
               <div className="lista__cuerpo">
-                <div className="lista__nombre">Bitácora de auditoría</div>
-                <div className="lista__meta">Altas y modificaciones registradas por el sistema</div>
+                <div className="lista__nombre">Mapa</div>
+                <div className="lista__meta">Distribución geográfica y mapa de calor</div>
               </div>
               <span className="enlace-panel__flecha" aria-hidden="true">→</span>
             </Link>
+
+            {[3, 4, 5].includes(perfil?.rol_id) && (
+              <Link className="enlace-panel" to="/reportes">
+                <span className="enlace-panel__icono" aria-hidden="true">📊</span>
+                <div className="lista__cuerpo">
+                  <div className="lista__nombre">Reportes de control</div>
+                  <div className="lista__meta">Brecha nutricional por comunidad y tiempos de respuesta</div>
+                </div>
+                <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+              </Link>
+            )}
+
+            {[4, 5].includes(perfil?.rol_id) && (
+              <Link className="enlace-panel" to="/auditoria">
+                <span className="enlace-panel__icono" aria-hidden="true">🕓</span>
+                <div className="lista__cuerpo">
+                  <div className="lista__nombre">Bitácora de auditoría</div>
+                  <div className="lista__meta">Altas y modificaciones registradas por el sistema</div>
+                </div>
+                <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+              </Link>
+            )}
           </>
         )}
       </main>

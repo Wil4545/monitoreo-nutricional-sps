@@ -82,3 +82,41 @@ export async function historial(pacienteId) {
     ...(m.indicador_nutricional ?? {}),
   }))
 }
+
+/**
+ * Todas las mediciones del distrito con su severidad, para los reportes
+ * de control (RF-09, Sección 4.3.2). Trae paciente y comunidad en la
+ * misma consulta para no hacer una petición por paciente — con RLS por
+ * comunidad activo (06_seguridad_por_comunidad.sql), Postgres ya
+ * devuelve solo lo que a cada usuario le corresponde ver; no hace falta
+ * filtrar nada de esto en el cliente.
+ */
+export async function todasLasMediciones() {
+  const { data, error } = await supabase
+    .from('medicion')
+    .select(
+      'paciente_id, fecha_medicion, ' +
+      'paciente(nombre, apellido, comunidad_id, comunidad(nombre)), ' +
+      'indicador_nutricional(severidad, clasificacion)',
+    )
+    .order('fecha_medicion', { ascending: true })
+
+  if (error) throw error
+
+  return (data ?? []).map((m) => ({
+    pacienteId: m.paciente_id,
+    fecha: m.fecha_medicion,
+    paciente: m.paciente ? `${m.paciente.nombre} ${m.paciente.apellido}` : 'Paciente',
+    comunidad: m.paciente?.comunidad?.nombre ?? 'Sin comunidad',
+    severidad: m.indicador_nutricional?.severidad ?? 0,
+    clasificacion: m.indicador_nutricional?.clasificacion ?? '',
+  }))
+}
+
+/** Registra en la bitácora de reportes que se generó una vista de control (RF-09). */
+export async function registrarReporte(tipo, parametros, usuarioId) {
+  const { error } = await supabase
+    .from('reporte')
+    .insert({ tipo, parametros: parametros ?? {}, generado_por: usuarioId ?? null })
+  if (error) console.warn('No se pudo registrar el reporte en la bitácora:', error.message)
+}

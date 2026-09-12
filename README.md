@@ -29,9 +29,34 @@ En el panel de Supabase, abre **SQL Editor** → **New query** y ejecuta,
 3. `03_seed.sql` — carga las comunidades del municipio.
 4. `04_actualizacion_panel_auditoria.sql` — amplía la lectura de `usuario`
    para que la bitácora de auditoría pueda mostrar el nombre de quien
-   hizo cada acción. **Ejecútalo aunque ya hayas corrido los tres
-   primeros antes en una instalación previa** — está escrito para
-   aplicarse sobre una base ya existente sin duplicar nada.
+   hizo cada acción.
+5. `05_vista_ubicaciones.sql` — agrega las coordenadas a la vista que
+   usa el panel (columnas que ya no usa el mapa por defecto — ver el
+   script 8 — pero se conservan por si más adelante quieres una capa
+   con visitas reales de brigadistas).
+6. `06_seguridad_por_comunidad.sql` — **opcional, puedes saltarlo.**
+   Fue un primer intento de restringir el acceso por comunidad
+   asignada; se descartó al comprobar que no refleja cómo opera un
+   distrito con una o dos personas cubriendo todo el municipio. Se
+   conserva en el repositorio como registro del proceso de diseño
+   (útil para narrar en la Sección 4.1.3 "Aprendizajes obtenidos"),
+   pero **no hace falta correrlo** — el script 7 no depende de él.
+7. `07_revertir_alcance_comunidad.sql` — el criterio vigente de RF-13.
+   Muestra todo el distrito a cualquier sesión autenticada, y controla
+   el acceso a nivel de pantalla: Reportes de control requiere rol
+   nutricionista/director/administrador, y la Bitácora de auditoría
+   requiere director/administrador. **Corre este directamente después
+   del 5, sin necesidad de pasar por el 6.**
+8. `08_coordenadas_comunidades.sql` — coordenadas reales (verificadas
+   contra OpenStreetMap) para 7 de las 13 comunidades del catálogo. El
+   mapa (RF-06/RF-07) ubica a cada paciente por su comunidad de
+   residencia, no por el GPS del dispositivo en el momento del
+   registro — léelo antes de correrlo, trae el detalle de por qué y
+   cuáles comunidades faltan.
+
+Los scripts del 4 en adelante están escritos para aplicarse sobre una
+base que ya tiene datos — puedes correrlos aunque ya hayas ejecutado una
+versión anterior del proyecto.
 
 Cada archivo se pega completo y se ejecuta con **Run**. Si alguno falla,
 revisa el mensaje de error antes de continuar al siguiente: normalmente
@@ -57,6 +82,12 @@ significa que el anterior no se ejecutó por completo.
 
    Códigos de rol: `1` auxiliar/técnico · `2` brigadista · `3` nutricionista
    · `4` director · `5` administrador.
+
+   Todos los roles ven el distrito completo (no se restringe por
+   comunidad — ver `07_revertir_alcance_comunidad.sql`). Lo que cambia
+   según el rol es el acceso a dos pantallas: **Reportes de control**
+   requiere rol `3`, `4` o `5`; **Bitácora de auditoría** requiere rol
+   `4` o `5`. Para ver todo durante pruebas o la defensa, usa rol `5`.
 
 ## 5. Conectar la aplicación
 
@@ -155,7 +186,11 @@ supabase/            Esquema SQL — ejecutar una sola vez en Supabase
   01_schema.sql       Tablas, vista, triggers de auditoría
   02_rls.sql          Políticas de seguridad a nivel de fila
   03_seed.sql         Comunidades del municipio
-  04_actualizacion_panel_auditoria.sql  Migración: lectura de usuario
+  04_actualizacion_panel_auditoria.sql    Migración: lectura de usuario
+  05_vista_ubicaciones.sql                Migración: coordenadas para el mapa
+  06_seguridad_por_comunidad.sql          Migración: RLS por comunidad (superada)
+  07_revertir_alcance_comunidad.sql       Migración: acceso por pantalla/rol (vigente)
+  08_coordenadas_comunidades.sql          Migración: coordenadas reales (7 de 13 comunidades)
 
 src/
   lib/oms/
@@ -164,11 +199,13 @@ src/
     clasificacion.js  Reglas de clasificación nutricional (RF-04)
   lib/
     supabase.js       Cliente de conexión
-    registro.js        Guardar medición + historial de un paciente
+    registro.js        Mediciones, historial y reportes (RF-09)
     formato.js         Utilidades de fecha, edad y formato numérico
     demo.js             Datos ficticios para /demostracion
   componentes/
     GraficoTrayectoria.jsx  Gráfico de dispersión con tendencia (RF-05)
+    CapaCalor.jsx             Mapa de calor sobre Leaflet (RF-07)
+    RutaProtegida.jsx          Candado de pantalla por rol (RF-13)
     Interfaz.jsx             Barra, campos, botones, insignias
   paginas/
     Ingreso.jsx
@@ -177,6 +214,8 @@ src/
     NuevoPaciente.jsx        RF-01
     NuevaMedicion.jsx        RF-02, RF-03, RF-04
     FichaPaciente.jsx        Reporte operativo (Sección 4.3.1)
+    Mapa.jsx                  Mapa de calor por comunidad — RF-06, RF-07
+    Reportes.jsx               Brecha nutricional y tiempos — RF-09
     Auditoria.jsx             Consulta de la bitácora — RF-14, RNF-10
     Demostracion.jsx
 
@@ -187,15 +226,17 @@ pruebas/
 vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
 ```
 
-## Pendiente para la segunda entrega (20 de septiembre)
+## Pendiente para la próxima entrega
 
-- RF-06, RF-07 — georreferenciación y mapa de calor con Leaflet.js
-- RF-08, RF-09 — reportes de control agregados (brecha nutricional por
-  comunidad, tiempos de respuesta) más allá de la ficha individual y el
-  panel resumen, que ya están listos
-- RF-13 reforzado — políticas RLS por comunidad asignada al usuario (hay
-  una propuesta ya redactada y discutida, pendiente de aplicar)
+- Coordenadas de las 6 comunidades que faltan (Tierra Colorada, San
+  Martín, Los Ortíz, Bosques de Vista Hermosa I y II, San Francisco I
+  y II, Chillaní) — ver el comentario de
+  `supabase/08_coordenadas_comunidades.sql` para las dos formas de
+  completarlas.
+- RF-10 — asignación de planes alimentarios (la tabla ya existe en el
+  esquema; falta la pantalla)
 - RF-11, RF-12 — operación sin conexión y sincronización (ver la
   recomendación de alcance discutida en la planificación de entregas)
+- RNF-05 — minimización y seudonimización de datos de menores
 - RNF-07 — manifiesto de aplicación web y Service Worker, para que la
   PWA sea instalable y no solo responsiva
