@@ -53,6 +53,19 @@ En el panel de Supabase, abre **SQL Editor** → **New query** y ejecuta,
    residencia, no por el GPS del dispositivo en el momento del
    registro — léelo antes de correrlo, trae el detalle de por qué y
    cuáles comunidades faltan.
+9. `09_coordenadas_pendientes.sql` — completa las 6 comunidades que
+   faltaban en el script 8 (Tierra Colorada, San Martín, Los Ortíz,
+   Bosques de Vista Hermosa I y II, San Francisco I y II, Chillaní).
+   Con este script, las 13 comunidades quedan con coordenada.
+10. `10_plan_alimentario_estructura.sql` — agrega a `plan_alimentario`
+    las columnas que usa el generador automático de planes (RF-10):
+    `macronutrientes` (los que se marcaron) y `menu_sugerido` (el
+    menú-guía generado, guardado tal como se presentó).
+11. `11_auditoria_minimizada.sql` — RNF-05. Reemplaza el trigger de
+    auditoría para que, en `paciente`, ya no duplique nombre completo,
+    fecha de nacimiento ni datos del tutor dentro de `registro_auditoria`
+    — guarda el código del paciente y, en una modificación, solo qué
+    columnas cambiaron (no sus valores).
 
 Los scripts del 4 en adelante están escritos para aplicarse sobre una
 base que ya tiene datos — puedes correrlos aunque ya hayas ejecutado una
@@ -191,6 +204,9 @@ supabase/            Esquema SQL — ejecutar una sola vez en Supabase
   06_seguridad_por_comunidad.sql          Migración: RLS por comunidad (superada)
   07_revertir_alcance_comunidad.sql       Migración: acceso por pantalla/rol (vigente)
   08_coordenadas_comunidades.sql          Migración: coordenadas reales (7 de 13 comunidades)
+  09_coordenadas_pendientes.sql           Migración: coordenadas reales (13 de 13 comunidades)
+  10_plan_alimentario_estructura.sql      Migración: generador de planes alimentarios (RF-10)
+  11_auditoria_minimizada.sql             Migración: bitácora sin PII de menores (RNF-05)
 
 src/
   lib/oms/
@@ -199,14 +215,18 @@ src/
     clasificacion.js  Reglas de clasificación nutricional (RF-04)
   lib/
     supabase.js       Cliente de conexión
-    registro.js        Mediciones, historial y reportes (RF-09)
+    registro.js        Mediciones, historial, reportes y planes alimentarios (RF-09, RF-10)
+    nutricion.js        Catálogo de alimentos y generador de menú-guía (RF-10)
+    pdfPlan.js           Genera el PDF descargable del plan (RF-10)
+    offline.js           Cola de mediciones sin conexión (RF-11, RF-12)
     formato.js         Utilidades de fecha, edad y formato numérico
     demo.js             Datos ficticios para /demostracion
   componentes/
     GraficoTrayectoria.jsx  Gráfico de dispersión con tendencia (RF-05)
     CapaCalor.jsx             Mapa de calor sobre Leaflet (RF-07)
     RutaProtegida.jsx          Candado de pantalla por rol (RF-13)
-    Interfaz.jsx             Barra, campos, botones, insignias
+    EstadoSincronizacion.jsx   Aviso global de mediciones pendientes (RF-12)
+    Interfaz.jsx             Barra, campos, botones, insignias, selector múltiple
   paginas/
     Ingreso.jsx
     Panel.jsx                Panel resumen — pantalla de entrada
@@ -214,10 +234,16 @@ src/
     NuevoPaciente.jsx        RF-01
     NuevaMedicion.jsx        RF-02, RF-03, RF-04
     FichaPaciente.jsx        Reporte operativo (Sección 4.3.1)
+    PlanesAlimentarios.jsx    Generador de planes + descarga en PDF — RF-10
     Mapa.jsx                  Mapa de calor por comunidad — RF-06, RF-07
     Reportes.jsx               Brecha nutricional y tiempos — RF-09
     Auditoria.jsx             Consulta de la bitácora — RF-14, RNF-10
     Demostracion.jsx
+
+public/
+  manifest.webmanifest    Metadatos de instalación — RNF-07
+  sw.js                    Service Worker, cachea el cascarón de la app — RNF-07
+  icono-192.png / icono-512.png / icono-180.png
 
 pruebas/
   validar-oms.mjs           Suite de validación del motor de puntajes Z
@@ -226,17 +252,69 @@ pruebas/
 vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
 ```
 
+## Ajustes de localización (post-entrega)
+
+- **Fechas en DD/MM/AAAA**: `src/lib/formato.js` (`fechaCorta`, `fechaHoraCorta`)
+  es la única fuente de formato de fecha en toda la app — se cambió ahí,
+  una vez, y se propaga a Ficha, Lista, Reportes, Auditoría, el PDF del
+  plan alimentario y el gráfico de trayectoria. **Excepción fuera de
+  nuestro control**: los campos `<input type="date">` (fecha de la cita,
+  fecha de nacimiento, fechas del plan) son controles nativos del
+  navegador — su calendario visual respeta el idioma/región configurado
+  en el sistema operativo o el navegador, no algo que la app pueda forzar
+  con CSS o JS. En un navegador configurado en español de Guatemala ya
+  muestra DD/MM/AAAA; solo se vería distinto si el dispositivo está en
+  otro idioma/región.
+- **Peso en libras y onzas**: en Nueva medición (`src/paginas/NuevaMedicion.jsx`),
+  además del campo de kilogramos (el que exige la OMS y guarda la base de
+  datos), hay dos campos — libras y onzas — que se convierten solos hacia
+  y desde kilogramos en `src/lib/peso.js`. Escribes en cualquiera de los
+  tres y los otros se autocompletan; solo el kilogramo se guarda en
+  `medicion.peso_kg` (no se agregó ninguna columna nueva, es únicamente
+  una ayuda de captura).
+
 ## Pendiente para la próxima entrega
 
-- Coordenadas de las 6 comunidades que faltan (Tierra Colorada, San
-  Martín, Los Ortíz, Bosques de Vista Hermosa I y II, San Francisco I
-  y II, Chillaní) — ver el comentario de
-  `supabase/08_coordenadas_comunidades.sql` para las dos formas de
-  completarlas.
-- RF-10 — asignación de planes alimentarios (la tabla ya existe en el
-  esquema; falta la pantalla)
-- RF-11, RF-12 — operación sin conexión y sincronización (ver la
-  recomendación de alcance discutida en la planificación de entregas)
-- RNF-05 — minimización y seudonimización de datos de menores
-- RNF-07 — manifiesto de aplicación web y Service Worker, para que la
-  PWA sea instalable y no solo responsiva
+- ~~Coordenadas de las 6 comunidades que faltaban~~ — completadas en
+  `supabase/09_coordenadas_pendientes.sql`. Las 13 comunidades del
+  catálogo tienen coordenada.
+- ~~RF-10 — asignación de planes alimentarios~~ — completado y
+  automatizado: la nutricionista marca los macronutrientes a reforzar
+  (preseleccionados según la clasificación vigente del paciente, RF-04),
+  `src/lib/nutricion.js` propone alimentos accesibles en la zona y un
+  menú-guía de 5 tiempos, y cada plan se descarga como PDF de una página
+  (`src/lib/pdfPlan.js`, con jsPDF) para entregar al tutor. Requiere
+  correr `supabase/10_plan_alimentario_estructura.sql`.
+- ~~RNF-07 — instalabilidad como PWA~~ — completado: `manifest.webmanifest`
+  + `sw.js` cachean el cascarón de la app (HTML/JS/CSS/iconos), lo que
+  habilita "Instalar aplicación" en el navegador. **Alcance acotado a
+  propósito**: el Service Worker no cachea datos de Supabase ni permite
+  registrar mediciones sin conexión — eso sigue siendo RF-11/RF-12, no
+  esto. Ver el comentario al inicio de `public/sw.js`.
+- ~~RF-11, RF-12 — operación sin conexión y sincronización~~ — **alcance
+  acotado**, implementado en `src/lib/offline.js`: si al guardar una
+  medición no hay red, se guarda en este dispositivo (`localStorage`) y
+  se sincroniza sola al recuperar señal, o con el botón "Sincronizar
+  ahora" que aparece en cualquier pantalla (`EstadoSincronizacion.jsx`).
+  Verificado con Playwright simulando la app sin conexión: la medición
+  se encola sin llegar a la red, y al reconectar se sincroniza sin
+  intervención.
+  **Lo que NO cubre este alcance** (documentado también en el propio
+  `offline.js`): no hay resolución de conflictos si dos dispositivos
+  registraran la misma cita mientras ambos están sin conexión —cada uno
+  se sincronizaría como una cita separada—, y solo cubre el flujo de
+  *guardar una medición*, no cachear catálogos para *consultar*
+  pacientes o comunidades sin conexión. Un verdadero RF-11/RF-12 con
+  resolución de conflictos sigue siendo trabajo futuro, pero el caso de
+  uso principal (no perder una medición por falta de señal en campo) ya
+  funciona.
+- ~~RNF-05 — minimización y seudonimización de datos de menores~~ —
+  completado en `supabase/11_auditoria_minimizada.sql`: la bitácora de
+  auditoría (`registro_auditoria`) ya no duplica nombre completo, fecha
+  de nacimiento ni datos del tutor de un paciente menor de cinco años;
+  guarda el código pseudónimo (SPS-AAAA-NNNN) y, en una edición, solo la
+  lista de columnas que cambiaron. Las pantallas de atención directa
+  (Ficha, Lista, Nueva medición) siguen mostrando el nombre completo a
+  propósito — el personal necesita identificar al niño correcto — la
+  minimización se aplicó donde el dato no aportaba nada al propósito del
+  registro (trazabilidad de acciones, no consulta clínica).

@@ -64,6 +64,27 @@ export function Segmentos({ valor, onChange, opciones, etiqueta }) {
   )
 }
 
+/** Chips de selección múltiple — misma base visual que Segmentos, pero cada opción se activa por separado. */
+export function SelectorMultiple({ valor, onChange, opciones, etiqueta }) {
+  function alternar(id) {
+    onChange(valor.includes(id) ? valor.filter((v) => v !== id) : [...valor, id])
+  }
+  return (
+    <div className="segmentos segmentos--envuelto" role="group" aria-label={etiqueta}>
+      {opciones.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          aria-pressed={valor.includes(o.valor)}
+          onClick={() => alternar(o.valor)}
+        >
+          {o.texto}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Aviso({ tipo = 'info', children }) {
   if (!children) return null
   return <div className={`aviso aviso--${tipo}`} role={tipo === 'error' ? 'alert' : undefined}>{children}</div>

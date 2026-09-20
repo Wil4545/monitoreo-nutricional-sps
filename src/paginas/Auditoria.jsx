@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
+import { fechaHoraCorta } from '../lib/formato.js'
 
 const ETIQUETA_ACCION = {
   alta: 'Alta', modificacion: 'Modificación', baja: 'Baja', consulta: 'Consulta',
@@ -66,9 +67,7 @@ export default function Auditoria() {
                     {ETIQUETA_ACCION[f.accion] ?? f.accion} · {ETIQUETA_ENTIDAD[f.entidad] ?? f.entidad}
                   </div>
                   <div className="lista__meta">
-                    {new Date(f.ocurrido_en).toLocaleString('es-GT', {
-                      dateStyle: 'medium', timeStyle: 'short',
-                    })}
+                    {fechaHoraCorta(f.ocurrido_en)}
                     {' · '}
                     {f.usuario?.nombre ?? 'Usuario no identificado'}
                   </div>

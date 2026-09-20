@@ -14,3 +14,14 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+// RNF-07 — registra el Service Worker que hace instalable la app.
+// Solo en producción: en `vite dev` el hot-reload y el SW compiten por
+// servir los mismos archivos y termina mostrando versiones viejas.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('No se pudo registrar el Service Worker:', err.message)
+    })
+  })
+}

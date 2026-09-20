@@ -120,3 +120,55 @@ export async function registrarReporte(tipo, parametros, usuarioId) {
     .insert({ tipo, parametros: parametros ?? {}, generado_por: usuarioId ?? null })
   if (error) console.warn('No se pudo registrar el reporte en la bitácora:', error.message)
 }
+
+/**
+ * Planes alimentarios de un paciente (RF-10), del más reciente al más
+ * antiguo. La tabla `plan_alimentario` existe desde el primer avance
+ * (01_schema.sql); `macronutrientes` y `menu_sugerido` se agregaron en
+ * 10_plan_alimentario_estructura.sql para el generador automático — un
+ * plan creado antes de esa migración simplemente trae ambas en null.
+ */
+export async function planesDePaciente(pacienteId) {
+  const { data, error } = await supabase
+    .from('plan_alimentario')
+    .select(
+      'id, nombre, descripcion, costo_diario, fecha_inicio, fecha_fin, ' +
+      'creado_en, macronutrientes, menu_sugerido, usuario(nombre)',
+    )
+    .eq('paciente_id', pacienteId)
+    .order('fecha_inicio', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map((p) => ({ ...p, sugerencia: p.menu_sugerido ?? null }))
+}
+
+/** Asigna un nuevo plan alimentario a un paciente. */
+export async function asignarPlan({ pacienteId, plan, usuarioId }) {
+  const { data, error } = await supabase
+    .from('plan_alimentario')
+    .insert({
+      paciente_id: pacienteId,
+      nombre: plan.nombre,
+      descripcion: plan.descripcion || null,
+      costo_diario: plan.costo_diario === '' ? null : Number(plan.costo_diario),
+      fecha_inicio: plan.fecha_inicio,
+      fecha_fin: plan.fecha_fin || null,
+      macronutrientes: plan.macronutrientes?.length ? plan.macronutrientes : null,
+      menu_sugerido: plan.sugerencia ?? null,
+      asignado_por: usuarioId ?? null,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return { ...data, sugerencia: data.menu_sugerido ?? null }
+}
+
+/** Marca un plan como finalizado hoy, sin borrar su historial. */
+export async function finalizarPlan(planId) {
+  const { error } = await supabase
+    .from('plan_alimentario')
+    .update({ fecha_fin: new Date().toISOString().slice(0, 10) })
+    .eq('id', planId)
+  if (error) throw error
+}

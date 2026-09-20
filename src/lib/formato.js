@@ -1,12 +1,27 @@
 /** Utilidades de presentación. */
 
-const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-
-/** '2025-03-14' → '14 mar 2025' (sin desfase por zona horaria). */
+/**
+ * '2025-03-14' → '14/03/2025' — formato DD/MM/AAAA usado en Guatemala.
+ * Se arma con los mismos dígitos de la fecha ISO (sin pasar por `Date`)
+ * para no arrastrar un desfase de zona horaria.
+ */
 export function fechaCorta(iso) {
   if (!iso) return '—'
   const [a, m, d] = String(iso).slice(0, 10).split('-')
-  return `${Number(d)} ${MESES[Number(m) - 1]} ${a}`
+  return `${d}/${m}/${a}`
+}
+
+/** Fecha y hora de un timestamp, en formato DD/MM/AAAA, HH:MM (hora local). */
+export function fechaHoraCorta(iso) {
+  if (!iso) return '—'
+  const f = new Date(iso)
+  if (Number.isNaN(f.getTime())) return '—'
+  const dd = String(f.getDate()).padStart(2, '0')
+  const mm = String(f.getMonth() + 1).padStart(2, '0')
+  const aaaa = f.getFullYear()
+  const hh = String(f.getHours()).padStart(2, '0')
+  const mi = String(f.getMinutes()).padStart(2, '0')
+  return `${dd}/${mm}/${aaaa}, ${hh}:${mi}`
 }
 
 /** Edad legible: '8 meses', '1 año 3 meses'. */

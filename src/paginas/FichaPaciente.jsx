@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { historial } from '../lib/registro.js'
 import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
@@ -15,6 +15,7 @@ import { edadLegible, fechaCorta, formatoZ, hoyISO } from '../lib/formato.js'
  */
 export default function FichaPaciente() {
   const { id } = useParams()
+  const { state } = useLocation()
   const [paciente, setPaciente] = useState(null)
   const [mediciones, setMediciones] = useState(null)
   const [error, setError] = useState('')
@@ -57,6 +58,12 @@ export default function FichaPaciente() {
 
       <main className="contenido">
         <Aviso tipo="error">{error}</Aviso>
+        {state?.sinConexion && (
+          <Aviso tipo="alerta">
+            Medición guardada en este dispositivo sin conexión. Se sincronizará
+            sola en cuanto haya señal, o desde el aviso en la parte superior.
+          </Aviso>
+        )}
 
         {/* Datos generales */}
         <div className="tarjeta">
@@ -161,6 +168,9 @@ export default function FichaPaciente() {
       </main>
 
       <BarraAccion>
+        <Link className="boton boton--secundario" to={`/pacientes/${id}/planes`}>
+          Planes alimentarios
+        </Link>
         <Link className="boton boton--principal boton--ancho" to={`/pacientes/${id}/medicion`}>
           Registrar nueva medición
         </Link>

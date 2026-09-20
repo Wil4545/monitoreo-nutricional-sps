@@ -228,6 +228,8 @@ input[aria-invalid='true'] { border-color: var(--sev-3); }
 
 /* Selector segmentado — reemplaza radios pequeños por objetivos amplios */
 .segmentos { display: flex; gap: 0.5rem; }
+.segmentos--envuelto { flex-wrap: wrap; }
+.segmentos--envuelto button { flex: none; min-height: 40px; padding: 0 0.85rem; }
 
 .segmentos button {
   flex: 1;

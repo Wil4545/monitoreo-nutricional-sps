@@ -1,0 +1,18 @@
+{
+  "name": "Monitoreo Nutricional · San Pedro Sacatepéquez",
+  "short_name": "Monitoreo Nutricional",
+  "description": "Sistema adaptable al móvil y georreferenciado para el monitoreo nutricional en San Pedro Sacatepéquez.",
+  "start_url": "/panel",
+  "id": "/panel",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14262E",
+  "theme_color": "#14705C",
+  "lang": "es-GT",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

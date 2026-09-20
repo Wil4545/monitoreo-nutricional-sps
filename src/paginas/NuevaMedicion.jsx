@@ -3,8 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { guardarMedicion } from '../lib/registro.js'
+import { encolarMedicionPendiente, esErrorDeRed } from '../lib/offline.js'
 import { calcularIndicadores } from '../lib/oms/zscore.js'
 import { clasificar } from '../lib/oms/clasificacion.js'
+import { kgALibraOnza, libraOnzaAKg } from '../lib/peso.js'
 import {
   Aviso, Barra, BarraAccion, Campo, Cargando, Insignia, Segmentos,
 } from '../componentes/Interfaz.jsx'
@@ -27,7 +29,7 @@ export default function NuevaMedicion() {
 
   const [paciente, setPaciente] = useState(null)
   const [f, setF] = useState({
-    fecha_medicion: hoyISO(), peso_kg: '', talla_cm: '',
+    fecha_medicion: hoyISO(), peso_kg: '', peso_lb: '', peso_oz: '', talla_cm: '',
     medido_acostado: null, observaciones: '',
   })
   const [coords, setCoords] = useState(null)
@@ -88,6 +90,29 @@ export default function NuevaMedicion() {
 
   const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }))
 
+  /**
+   * Peso en dos unidades para el mismo dato (a pedido de la
+   * nutricionista: en Guatemala se pesa en libras y onzas, pero la OMS y
+   * la base de datos usan kilogramos). Cada campo, al cambiar, recalcula
+   * los otros dos — ver lib/peso.js para la conversión.
+   */
+  function cambiarPesoKg(e) {
+    const valor = e.target.value
+    const kg = Number(valor)
+    const conv = valor === '' || !Number.isFinite(kg) ? { libras: '', onzas: '' } : kgALibraOnza(kg)
+    setF((v) => ({ ...v, peso_kg: valor, peso_lb: conv.libras, peso_oz: conv.onzas }))
+  }
+
+  function cambiarPesoLibras(e) {
+    const libras = e.target.value
+    setF((v) => ({ ...v, peso_lb: libras, peso_kg: libraOnzaAKg(libras, v.peso_oz) }))
+  }
+
+  function cambiarPesoOnzas(e) {
+    const onzas = e.target.value
+    setF((v) => ({ ...v, peso_oz: onzas, peso_kg: libraOnzaAKg(v.peso_lb, onzas) }))
+  }
+
   async function guardar(ev) {
     ev.preventDefault()
     setError('')
@@ -97,18 +122,34 @@ export default function NuevaMedicion() {
       return
     }
     setGuardando(true)
+
+    const payload = {
+      paciente,
+      medicion: {
+        ...f,
+        latitud: coords ? coords.lat : null,
+        longitud: coords ? coords.lng : null,
+      },
+      usuarioId: perfil?.id,
+    }
+
+    // Sin conexión: ni se intenta la llamada de red (RF-11). El registro
+    // se sincroniza solo más adelante (RF-12, ver lib/offline.js).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      encolarMedicionPendiente(payload)
+      navegar(`/pacientes/${id}`, { replace: true, state: { sinConexion: true } })
+      return
+    }
+
     try {
-      await guardarMedicion({
-        paciente,
-        medicion: {
-          ...f,
-          latitud: coords ? coords.lat : null,
-          longitud: coords ? coords.lng : null,
-        },
-        usuarioId: perfil?.id,
-      })
+      await guardarMedicion(payload)
       navegar(`/pacientes/${id}`, { replace: true })
     } catch (err) {
+      if (esErrorDeRed(err)) {
+        encolarMedicionPendiente(payload)
+        navegar(`/pacientes/${id}`, { replace: true, state: { sinConexion: true } })
+        return
+      }
       setError(err.message ?? 'No se pudo guardar la medición.')
       setGuardando(false)
     }
@@ -144,15 +185,26 @@ export default function NuevaMedicion() {
             </Campo>
 
             <div className="par">
-              <Campo etiqueta="Peso (kg)" id="peso">
+              <Campo etiqueta="Peso (kg)" id="peso" ayuda="O ingresa libras y onzas abajo — se convierte solo.">
                 <input id="peso" inputMode="decimal" placeholder="0.00"
-                  value={f.peso_kg} onChange={set('peso_kg')}
+                  value={f.peso_kg} onChange={cambiarPesoKg}
                   aria-invalid={fueraDeRangoFisiologico || undefined} />
               </Campo>
               <Campo etiqueta="Talla (cm)" id="talla">
                 <input id="talla" inputMode="decimal" placeholder="0.0"
                   value={f.talla_cm} onChange={set('talla_cm')}
                   aria-invalid={fueraDeRangoFisiologico || undefined} />
+              </Campo>
+            </div>
+
+            <div className="par">
+              <Campo etiqueta="… o libras" id="peso_lb">
+                <input id="peso_lb" inputMode="decimal" placeholder="lb"
+                  value={f.peso_lb} onChange={cambiarPesoLibras} />
+              </Campo>
+              <Campo etiqueta="… y onzas" id="peso_oz">
+                <input id="peso_oz" inputMode="decimal" placeholder="oz"
+                  value={f.peso_oz} onChange={cambiarPesoOnzas} />
               </Campo>
             </div>
 
