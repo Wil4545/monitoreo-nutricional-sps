@@ -3,6 +3,7 @@ import { useSesion } from '../contexto/Sesion.jsx'
 import { todasLasMediciones, registrarReporte } from '../lib/registro.js'
 import { Aviso, Barra, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { fechaCorta } from '../lib/formato.js'
+import { mensajeErrorRed } from '../lib/offline.js'
 
 /**
  * Reportes de control — RF-09 (Sección 4.2.1, 4.3.2).
@@ -29,7 +30,7 @@ export default function Reportes() {
         setMediciones(datos)
         registrarReporte('brecha_y_tiempos_respuesta', {}, perfil?.id)
       })
-      .catch((e) => { setError(e.message); setMediciones([]) })
+      .catch((e) => { setError(mensajeErrorRed(e, 'los reportes')); setMediciones([]) })
   }, [perfil])
 
   const porComunidad = useMemo(() => {

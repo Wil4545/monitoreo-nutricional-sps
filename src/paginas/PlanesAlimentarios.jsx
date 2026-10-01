@@ -12,6 +12,7 @@ import {
   Aviso, Barra, BarraAccion, Campo, Cargando, SelectorMultiple,
 } from '../componentes/Interfaz.jsx'
 import { fechaCorta, hoyISO } from '../lib/formato.js'
+import { mensajeErrorRed } from '../lib/offline.js'
 
 /**
  * RF-10 — planes alimentarios generados a partir de las necesidades
@@ -56,13 +57,22 @@ export default function PlanesAlimentarios() {
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setPaciente(data)
+      })
+      .catch((e) => {
+        // Esta pantalla no tiene copia en caché propia — sin conexión
+        // no hay nada que mostrar, así que se marca con `false` (no con
+        // null) para salir del estado "Cargando…" y mostrar el aviso.
+        setError(mensajeErrorRed(e, 'los planes alimentarios'))
+        setPaciente(false)
       })
 
     // Clasificación vigente, para proponer macronutrientes por defecto
     // (RF-04 → RF-10). Si el paciente aún no tiene mediciones, la vista
-    // devuelve los campos en null y simplemente no se sugiere nada.
+    // devuelve los campos en null y simplemente no se sugiere nada. Es
+    // un apoyo opcional: si falla (por ejemplo, sin conexión), el
+    // formulario sigue funcionando, solo sin sugerencia preseleccionada.
     supabase
       .from('v_paciente_estado')
       .select('z_peso_edad, z_talla_edad, z_peso_talla')
@@ -75,6 +85,7 @@ export default function PlanesAlimentarios() {
         })
         setMacros(sugerirMacronutrientes(dictamen))
       })
+      .catch(() => {})
 
     cargarPlanes()
   }, [id])
@@ -82,7 +93,7 @@ export default function PlanesAlimentarios() {
   function cargarPlanes() {
     planesDePaciente(id)
       .then(setPlanes)
-      .catch((e) => { setError(e.message); setPlanes([]) })
+      .catch((e) => { setError(mensajeErrorRed(e, 'los planes alimentarios')); setPlanes([]) })
   }
 
   const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }))
@@ -116,7 +127,7 @@ export default function PlanesAlimentarios() {
       setMostrarForm(false)
       cargarPlanes()
     } catch (err) {
-      setError(err.message ?? 'No se pudo guardar el plan.')
+      setError(mensajeErrorRed(err, 'guardar un plan alimentario'))
     } finally {
       setGuardando(false)
     }
@@ -127,7 +138,7 @@ export default function PlanesAlimentarios() {
       await finalizarPlan(planId)
       cargarPlanes()
     } catch (err) {
-      setError(err.message ?? 'No se pudo finalizar el plan.')
+      setError(mensajeErrorRed(err, 'finalizar el plan'))
     }
   }
 
@@ -138,11 +149,22 @@ export default function PlanesAlimentarios() {
     })
   }
 
-  if (!paciente || planes === null) {
+  if (paciente === null || planes === null) {
     return (
       <div className="marco">
         <Barra volver titulo="Planes alimentarios" />
         <Cargando />
+      </div>
+    )
+  }
+
+  if (!paciente) {
+    return (
+      <div className="marco">
+        <Barra volver titulo="Planes alimentarios" />
+        <main className="contenido">
+          <Aviso tipo="alerta">{error}</Aviso>
+        </main>
       </div>
     )
   }

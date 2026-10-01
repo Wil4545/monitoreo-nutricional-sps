@@ -6,7 +6,7 @@ import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
 import { Aviso, Barra, BarraAccion, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, fechaCorta, fechaHoraCorta, formatoZ, hoyISO } from '../lib/formato.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 
 /**
  * Ficha de seguimiento individual — reporte operativo de la Sección 4.3.1.
@@ -42,7 +42,11 @@ export default function FichaPaciente() {
           setPaciente(cache.datos)
           setCacheFecha(cache.guardadoEn)
         } else {
-          setError(e.message)
+          // Sin caché que reutilizar: se marca con `false` (no `null`)
+          // para salir del estado "Cargando…" y mostrar el aviso en vez
+          // de quedarse esperando para siempre.
+          setError(mensajeErrorRed(e, 'la ficha de este paciente'))
+          setPaciente(false)
         }
       })
 
@@ -57,17 +61,26 @@ export default function FichaPaciente() {
           setMediciones(cache.datos)
           setCacheFecha(cache.guardadoEn)
         } else {
-          setError(e.message)
+          setError(mensajeErrorRed(e, 'el historial de este paciente'))
           setMediciones([])
         }
       })
   }, [id])
 
-  if (!paciente || mediciones === null) {
+  if (paciente === null || mediciones === null) {
     return (
       <div className="marco">
         <Barra volver titulo="Ficha del paciente" />
         <Cargando />
+      </div>
+    )
+  }
+
+  if (!paciente) {
+    return (
+      <div className="marco">
+        <Barra volver titulo="Ficha del paciente" />
+        <main className="contenido"><Aviso tipo="alerta">{error}</Aviso></main>
       </div>
     )
   }

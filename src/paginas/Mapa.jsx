@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { supabase } from '../lib/supabase.js'
 import { Aviso, Barra, Cargando, Segmentos } from '../componentes/Interfaz.jsx'
 import CapaCalor from '../componentes/CapaCalor.jsx'
+import { mensajeErrorRed } from '../lib/offline.js'
 
 const COLOR_SEVERIDAD = {
   0: '#1F7A5C', 1: '#B07D0A', 2: '#C05621', 3: '#9B1C1C',
@@ -40,16 +41,21 @@ export default function Mapa() {
   const [vista, setVista] = useState('calor') // 'calor' | 'comunidades'
 
   useEffect(() => {
+    // El mapa no tiene copia en caché (los puntos dependen de cruzar dos
+    // tablas) — sin conexión, se avisa con claridad en vez de dejar el
+    // mapa "Cargando…" para siempre.
     supabase.from('v_paciente_estado').select('*')
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setPacientes(data ?? [])
       })
+      .catch((e) => { setError(mensajeErrorRed(e, 'el mapa')); setPacientes([]) })
     supabase.from('comunidad').select('nombre, latitud, longitud')
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setComunidades(data ?? [])
       })
+      .catch((e) => { setError(mensajeErrorRed(e, 'el mapa')); setComunidades([]) })
   }, [])
 
   // Un punto por paciente en la coordenada de su comunidad — varios

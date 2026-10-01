@@ -5,7 +5,8 @@ import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, fechaCorta, fechaHoraCorta, hoyISO } from '../lib/formato.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
+import { estadoPrecarga, precargarPacientes } from '../lib/precarga.js'
 
 const CLAVE_CACHE = 'pacientes'
 
@@ -16,6 +17,9 @@ export default function ListaPacientes() {
   const [busqueda, setBusqueda] = useState('')
   const [error, setError] = useState('')
   const [cacheFecha, setCacheFecha] = useState(null)
+  const [precargando, setPrecargando] = useState(false)
+  const [progreso, setProgreso] = useState({ completados: 0, total: 0 })
+  const [estadoPrevio, setEstadoPrevio] = useState(() => estadoPrecarga())
 
   useEffect(() => {
     supabase
@@ -37,7 +41,7 @@ export default function ListaPacientes() {
           setPacientes(cache.datos)
           setCacheFecha(cache.guardadoEn)
         } else {
-          setError(e.message)
+          setError(mensajeErrorRed(e, 'la lista de pacientes'))
           setPacientes([])
         }
       })
@@ -55,6 +59,17 @@ export default function ListaPacientes() {
   }, [pacientes, busqueda])
 
   const enSeguimiento = pacientes?.filter((p) => p.severidad > 0).length ?? 0
+
+  async function prepararParaBrigada() {
+    if (!pacientes || pacientes.length === 0) return
+    setPrecargando(true)
+    setProgreso({ completados: 0, total: pacientes.length })
+    await precargarPacientes(pacientes, (completados, total) =>
+      setProgreso({ completados, total }),
+    )
+    setEstadoPrevio(estadoPrecarga())
+    setPrecargando(false)
+  }
 
   return (
     <div className="marco">
@@ -91,6 +106,41 @@ export default function ListaPacientes() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
         </div>
+
+        {pacientes !== null && pacientes.length > 0 && (
+          <div className="tarjeta" style={{ marginBottom: '0.9rem' }}>
+            <p className="eyebrow" style={{ marginBottom: '0.3rem' }}>
+              Preparar para trabajo sin conexión
+            </p>
+            <p className="campo__ayuda" style={{ marginBottom: '0.6rem' }}>
+              Descarga la ficha y el historial de cada paciente a este
+              dispositivo, para poder consultar a cualquiera y registrarle una
+              medición nueva sin señal — hazlo con conexión, antes de salir a
+              una comunidad.
+            </p>
+
+            {estadoPrevio && (
+              <p className="lista__meta" style={{ marginBottom: '0.6rem' }}>
+                Última preparación: {estadoPrevio.datos.completados} de{' '}
+                {estadoPrevio.datos.total} pacientes listos sin conexión
+                {estadoPrevio.datos.interrumpido ? ' (se interrumpió por falta de señal)' : ''}
+                {' · '}
+                {fechaHoraCorta(estadoPrevio.guardadoEn)}
+              </p>
+            )}
+
+            <button
+              type="button"
+              className="boton boton--secundario"
+              onClick={prepararParaBrigada}
+              disabled={precargando}
+            >
+              {precargando
+                ? `Preparando… ${progreso.completados}/${progreso.total}`
+                : `Preparar los ${pacientes.length} pacientes`}
+            </button>
+          </div>
+        )}
 
         {pacientes === null ? (
           <Cargando>Cargando pacientes…</Cargando>

@@ -148,3 +148,19 @@ export function leerDeCache(clave) {
     return null
   }
 }
+
+/**
+ * Mensaje para pantallas que SÍ necesitan red y no tienen copia en
+ * caché que mostrar (Mapa, Reportes, Auditoría, Planes alimentarios,
+ * Registrar paciente nuevo): evita mostrar el "TypeError: Failed to
+ * fetch" crudo del navegador, y explica con honestidad que esa pantalla
+ * en particular está fuera del alcance acotado de RF-11/RF-12 — no
+ * todo el sistema funciona sin conexión, solo lo que documenta el
+ * encabezado de este archivo y el README.
+ */
+export function mensajeErrorRed(err, pantalla = 'esta pantalla') {
+  if (esErrorDeRed(err)) {
+    return `Sin conexión: ${pantalla} necesita señal para cargar. Vuelve a intentarlo cuando se restablezca.`
+  }
+  return err?.message ?? 'Ocurrió un error inesperado.'
+}

@@ -219,6 +219,7 @@ src/
     nutricion.js        Catálogo de alimentos y generador de menú-guía (RF-10)
     pdfPlan.js           Genera el PDF descargable del plan (RF-10)
     offline.js           Cola de mediciones sin conexión y caché de lectura (RF-11, RF-12)
+    precarga.js           Descarga ficha + historial de todos los pacientes para brigadas (RF-11, RF-12)
     peso.js              Conversión kg <-> libras/onzas
     formato.js         Utilidades de fecha, edad y formato numérico
     demo.js             Datos ficticios para /demostracion
@@ -313,25 +314,60 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
     para un paciente cuya ficha ya se consultó antes, reutilizando esos
     mismos datos (nombre, sexo, fecha de nacimiento) para calcular la
     clasificación.
+  - **Preparar para brigada** (`src/lib/precarga.js`, botón "Preparar
+    para trabajo sin conexión" en la Lista de pacientes): el punto real
+    del sistema es que la nutricionista visite comunidades sin señal y
+    pueda, ahí mismo, consultar el estado de varios niños **y**
+    registrarles una medición — no solo de un paciente que ya se
+    hubiera abierto antes desde la oficina. Un solo visitazo a la Lista
+    de pacientes ya deja cacheado el *listado* completo con severidad y
+    última cita de todos (eso venía gratis desde la primera versión del
+    caché); lo que faltaba era el *detalle* de cada uno (ficha completa
+    e historial), necesario para registrar una medición nueva. El botón
+    "Preparar los N pacientes" descarga, con conexión, la ficha y el
+    historial de **todos** los pacientes de la lista — no solo del que
+    se vaya a visitar — y los deja listos en este dispositivo. Es
+    secuencial (una petición a la vez, no en paralelo) para no saturar
+    una conexión móvil rural, y si se corta a medio camino, lo que ya
+    se alcanzó a guardar queda utilizable y el estado indica que se
+    interrumpió. La lista de pacientes recuerda cuántos quedaron listos
+    y cuándo ("Última preparación: 12 de 12 pacientes… hace 10 min").
 
   Verificado con Playwright simulando la app sin conexión: dos
   mediciones seguidas se encolan sin llegar a la red y ambas aparecen
   en el detalle de pendientes; el Panel, la lista y una ficha muestran
-  sus datos cacheados sin conexión; y al reconectar, la cola se
-  sincroniza sola sin intervención.
+  sus datos cacheados sin conexión; tras usar "Preparar para brigada"
+  sobre tres pacientes de prueba sin haber abierto la ficha de ninguno
+  individualmente, los tres se pudieron consultar y se les registró una
+  medición sin conexión; y al reconectar, la cola se sincroniza sola
+  sin intervención.
 
   **Lo que NO cubre este alcance** (documentado también en el propio
   `offline.js`): no hay resolución de conflictos si dos dispositivos
   registraran la misma cita mientras ambos están sin conexión —cada uno
-  se sincronizaría como una cita separada—; la copia cacheada es de
-  solo lectura y no se actualiza sola (hay que volver a abrir la
-  pantalla con conexión para refrescarla); y solo se cachea lo que ya
-  se consultó al menos una vez en línea — un paciente nunca abierto
-  antes no se puede ver por primera vez sin conexión. Un verdadero
-  RF-11/RF-12 con resolución de conflictos y precarga completa sigue
-  siendo trabajo futuro, pero el caso de uso principal (no perder una
-  medición ni quedarse sin poder consultar un paciente por falta de
-  señal en campo) ya funciona.
+  se sincronizaría como una cita separada—; la copia cacheada (incluida
+  la de "Preparar para brigada") es de solo lectura y no se actualiza
+  sola — si se da de alta un paciente nuevo o cambia algo después de
+  preparar, hay que volver a preparar con conexión para incluirlo; y
+  registrar un paciente **nuevo** (RF-01) sigue sin admitirse sin
+  conexión, porque necesita generar su código correlativo contra el
+  servidor. Un verdadero RF-11/RF-12 con resolución de conflictos sigue
+  siendo trabajo futuro, pero el caso de uso principal de una brigada
+  (consultar y medir a varios niños ya registrados, sin señal) ya
+  funciona.
+
+  **Cómo probarlo**: 1) con conexión, entra a "Pacientes en monitoreo"
+  y pulsa "Preparar los N pacientes" (espera a que termine); 2)
+  desconecta la red; 3) navega a cualquier paciente de la lista,
+  incluyendo uno que no hayas abierto antes — su ficha e historial
+  deben verse con el aviso ámbar de "sin conexión"; 4) regístrale una
+  medición nueva — debe guardarse en cola, no fallar. Panel y Lista
+  también muestran su propio aviso de caché si se abrieron antes con
+  conexión. Mapa, Reportes, Auditoría, Planes alimentarios y Registrar
+  paciente nuevo **no** tienen caché — siempre muestran un aviso
+  explicando que esa pantalla necesita señal, por diseño: no son el
+  caso de uso de una brigada. Ninguna pantalla debería quedarse
+  "Cargando…" sin explicar por qué; si eso pasa, es un error.
 - ~~RNF-05 — minimización y seudonimización de datos de menores~~ —
   completado en `supabase/11_auditoria_minimizada.sql`: la bitácora de
   auditoría (`registro_auditoria`) ya no duplica nombre completo, fecha

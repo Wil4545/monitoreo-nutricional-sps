@@ -5,6 +5,7 @@ import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, BarraAccion, Campo, Segmentos } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, generarCodigo, hoyISO } from '../lib/formato.js'
+import { mensajeErrorRed } from '../lib/offline.js'
 
 /** RF-01 — Registrar pacientes (Sección 4.2.1) */
 export default function NuevoPaciente() {
@@ -22,12 +23,15 @@ export default function NuevoPaciente() {
 
   useEffect(() => {
     supabase.from('comunidad').select('id, nombre').order('nombre')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) throw error
         setComunidades(data ?? [])
         if (data?.length && !f.comunidad_id) {
           setF((v) => ({ ...v, comunidad_id: perfil?.comunidad_id ?? data[0].id }))
         }
       })
+      .catch((e) => setError(mensajeErrorRed(e, 'el catálogo de comunidades')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfil])
 
   const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }))
@@ -77,7 +81,11 @@ export default function NuevoPaciente() {
       if (error) throw error
       navegar(`/pacientes/${data.id}/medicion?nuevo=1`, { replace: true })
     } catch (err) {
-      setError(err.message ?? 'No se pudo guardar el paciente.')
+      // Registrar un paciente nuevo necesita generar su código
+      // correlativo contra el total actual (RF-01) — a diferencia de una
+      // medición (RF-11), esto no se admite sin conexión en este
+      // alcance, así que se avisa en vez de encolarlo silenciosamente.
+      setError(mensajeErrorRed(err, 'registrar un paciente nuevo'))
       setGuardando(false)
     }
   }

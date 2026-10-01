@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
 import { fechaHoraCorta } from '../lib/formato.js'
+import { mensajeErrorRed } from '../lib/offline.js'
 
 const ETIQUETA_ACCION = {
   alta: 'Alta', modificacion: 'Modificación', baja: 'Baja', consulta: 'Consulta',
@@ -27,16 +28,25 @@ export default function Auditoria() {
 
   async function cargar(desde) {
     setCargando(true)
-    const { data, error } = await supabase
-      .from('registro_auditoria')
-      .select('id, entidad, entidad_id, accion, ocurrido_en, usuario(nombre)')
-      .order('ocurrido_en', { ascending: false })
-      .range(desde, desde + TAM_PAGINA - 1)
+    try {
+      const { data, error } = await supabase
+        .from('registro_auditoria')
+        .select('id, entidad, entidad_id, accion, ocurrido_en, usuario(nombre)')
+        .order('ocurrido_en', { ascending: false })
+        .range(desde, desde + TAM_PAGINA - 1)
 
-    if (error) setError(error.message)
-    setFilas((prev) => [...prev, ...(data ?? [])])
-    setHayMas((data ?? []).length === TAM_PAGINA)
-    setCargando(false)
+      if (error) throw error
+      setFilas((prev) => [...prev, ...(data ?? [])])
+      setHayMas((data ?? []).length === TAM_PAGINA)
+    } catch (e) {
+      // Esta bitácora no tiene copia en caché — sin conexión, no hay
+      // nada que mostrar, pero al menos se explica por qué en vez de
+      // quedarse cargando para siempre.
+      setError(mensajeErrorRed(e, 'la bitácora de auditoría'))
+      setHayMas(false)
+    } finally {
+      setCargando(false)
+    }
   }
 
   useEffect(() => { cargar(0) }, []) // eslint-disable-line react-hooks/exhaustive-deps

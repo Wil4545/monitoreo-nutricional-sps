@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 import { fechaHoraCorta } from '../lib/formato.js'
 
 const CLAVE_CACHE = 'panel'
@@ -46,7 +46,7 @@ export default function Panel() {
           setFilas(cache.datos)
           setCacheFecha(cache.guardadoEn)
         } else {
-          setError(e.message)
+          setError(mensajeErrorRed(e, 'el panel'))
           setFilas([])
         }
       })
