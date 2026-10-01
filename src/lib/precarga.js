@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js'
 import { historial } from './registro.js'
-import { guardarEnCache, leerDeCache } from './offline.js'
+import { conTiempoLimite, guardarEnCache, leerDeCache } from './offline.js'
 
 const CLAVE_ESTADO = 'precarga-estado'
 
@@ -29,11 +29,11 @@ export async function precargarPacientes(pacientes, onProgreso) {
   for (const p of pacientes) {
     try {
       const [{ data: datos, error }, hist] = await Promise.all([
-        supabase
+        conTiempoLimite(supabase
           .from('paciente')
           .select('*, comunidad(nombre, sector)')
           .eq('id', p.id)
-          .single(),
+          .single()),
         historial(p.id),
       ])
       if (error) throw error

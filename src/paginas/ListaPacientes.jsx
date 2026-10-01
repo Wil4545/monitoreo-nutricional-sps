@@ -5,7 +5,7 @@ import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, fechaCorta, fechaHoraCorta, hoyISO } from '../lib/formato.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 import { estadoPrecarga, precargarPacientes } from '../lib/precarga.js'
 
 const CLAVE_CACHE = 'pacientes'
@@ -22,10 +22,10 @@ export default function ListaPacientes() {
   const [estadoPrevio, setEstadoPrevio] = useState(() => estadoPrecarga())
 
   useEffect(() => {
-    supabase
+    conTiempoLimite(supabase
       .from('v_paciente_estado')
       .select('*')
-      .order('severidad', { ascending: false, nullsFirst: false })
+      .order('severidad', { ascending: false, nullsFirst: false }))
       .then(({ data, error }) => {
         if (error) throw error
         setPacientes(data ?? [])
@@ -74,7 +74,7 @@ export default function ListaPacientes() {
   return (
     <div className="marco">
       <Barra
-        volver
+        volver="/panel"
         sub="Centro de Salud · San Pedro Sacatepéquez"
         titulo="Pacientes en monitoreo"
       />

@@ -1,16 +1,31 @@
 import { useNavigate } from 'react-router-dom'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
 
-/** Barra superior. `volver` muestra el control de regreso. */
+/**
+ * Barra superior. `volver` muestra el control de regreso.
+ *
+ * `volver` acepta una ruta explícita (string) o `true` para usar el
+ * historial del navegador. Se prefiere la ruta explícita en cada
+ * pantalla: si se entra directo a una URL (un enlace compartido, una
+ * pestaña de Safari restaurada al reabrir el teléfono, un marcador) no
+ * queda nada en el historial de ESTA sesión para regresar, y
+ * `navegar(-1)` simplemente no hace nada — el botón se ve pero no
+ * responde. Con una ruta explícita, "volver" funciona siempre, sin
+ * importar cómo se llegó a la pantalla.
+ */
 export function Barra({ titulo, sub, volver = false, accion = null }) {
   const navegar = useNavigate()
+  function irAtras() {
+    if (typeof volver === 'string') navegar(volver)
+    else navegar(-1)
+  }
   return (
     <header className="barra">
       {volver && (
         <button
           type="button"
           className="barra__volver"
-          onClick={() => navegar(-1)}
+          onClick={irAtras}
           aria-label="Volver"
         >
           ←

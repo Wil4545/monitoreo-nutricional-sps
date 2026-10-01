@@ -5,7 +5,7 @@ import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, BarraAccion, Campo, Segmentos } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, generarCodigo, hoyISO } from '../lib/formato.js'
-import { mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, mensajeErrorRed } from '../lib/offline.js'
 
 /** RF-01 — Registrar pacientes (Sección 4.2.1) */
 export default function NuevoPaciente() {
@@ -22,7 +22,7 @@ export default function NuevoPaciente() {
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
-    supabase.from('comunidad').select('id, nombre').order('nombre')
+    conTiempoLimite(supabase.from('comunidad').select('id, nombre').order('nombre'))
       .then(({ data, error }) => {
         if (error) throw error
         setComunidades(data ?? [])
@@ -58,11 +58,11 @@ export default function NuevoPaciente() {
     setGuardando(true)
 
     try {
-      const { count } = await supabase
+      const { count } = await conTiempoLimite(supabase
         .from('paciente')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true }))
 
-      const { data, error } = await supabase
+      const { data, error } = await conTiempoLimite(supabase
         .from('paciente')
         .insert({
           codigo: generarCodigo((count ?? 0) + 1),
@@ -76,7 +76,7 @@ export default function NuevoPaciente() {
           creado_por: perfil?.id ?? null,
         })
         .select()
-        .single()
+        .single())
 
       if (error) throw error
       navegar(`/pacientes/${data.id}/medicion?nuevo=1`, { replace: true })
@@ -92,7 +92,7 @@ export default function NuevoPaciente() {
 
   return (
     <div className="marco">
-      <Barra volver sub="Nuevo registro" titulo="Datos del paciente" />
+      <Barra volver="/pacientes" sub="Nuevo registro" titulo="Datos del paciente" />
 
       <main className="contenido">
         <Aviso tipo="error">{error}</Aviso>

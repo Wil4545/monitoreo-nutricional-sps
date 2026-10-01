@@ -293,6 +293,19 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
   propósito**: el Service Worker no cachea datos de Supabase ni permite
   registrar mediciones sin conexión — eso sigue siendo RF-11/RF-12, no
   esto. Ver el comentario al inicio de `public/sw.js`.
+- **Navegación "volver" por ruta explícita, no por historial** (fix de
+  adaptabilidad móvil, `src/componentes/Interfaz.jsx`): el botón "←" de
+  cada pantalla usaba `navigate(-1)` (retroceder en el historial del
+  navegador). Eso falla en cualquier entrada directa a una URL interior
+  — un enlace compartido, una pestaña de Safari restaurada al reabrir
+  el teléfono, un marcador — porque no hay nada en el historial de esa
+  pestaña para retroceder: el botón se ve pero no responde (reportado
+  en iPhone: la app abría directo en Mapa, con el "volver" sin efecto).
+  Ahora `Barra` acepta una ruta explícita (`volver="/panel"`,
+  `volver={`/pacientes/${id}`}`, etc.) y navega ahí directamente, sin
+  depender del historial. Verificado con Playwright: abrir `/mapa`
+  como primera carga de una pestaña nueva y pulsar "volver" navega a
+  `/panel` correctamente.
 - ~~RF-11, RF-12 — operación sin conexión y sincronización~~ — **alcance
   acotado**, implementado en `src/lib/offline.js`:
   - **Escritura en cola**: si al guardar una medición no hay red, se
@@ -341,6 +354,19 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
   individualmente, los tres se pudieron consultar y se les registró una
   medición sin conexión; y al reconectar, la cola se sincroniza sola
   sin intervención.
+
+  **Tiempo límite de red** (`conTiempoLimite` en `offline.js`, 8 s): en
+  campo, una señal débil no siempre falla rápido con un error claro —
+  a veces la petición se queda esperando una respuesta que nunca llega,
+  y `navigator.onLine` puede seguir marcando "en línea" aunque esa red
+  no tenga salida real a internet. Todas las peticiones a Supabase
+  (lectura y escritura) pasan por este límite; si no responden a
+  tiempo, se tratan como error de red — caen al dato cacheado o
+  muestran el aviso de "sin conexión", en vez de dejar la pantalla
+  esperando indefinidamente. Verificado simulando una petición que
+  nunca se resuelve (no un simple corte): la ficha de un paciente cae
+  a su copia en caché a los 8 segundos, en vez de quedarse en
+  "Cargando…".
 
   **Lo que NO cubre este alcance** (documentado también en el propio
   `offline.js`): no hay resolución de conflictos si dos dispositivos

@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 import { fechaHoraCorta } from '../lib/formato.js'
 
 const CLAVE_CACHE = 'panel'
@@ -31,9 +31,9 @@ export default function Panel() {
   const [cacheFecha, setCacheFecha] = useState(null)
 
   useEffect(() => {
-    supabase
+    conTiempoLimite(supabase
       .from('v_paciente_estado')
-      .select('*')
+      .select('*'))
       .then(({ data, error }) => {
         if (error) throw error
         setFilas(data ?? [])

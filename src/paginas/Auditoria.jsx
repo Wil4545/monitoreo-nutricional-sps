@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
 import { fechaHoraCorta } from '../lib/formato.js'
-import { mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, mensajeErrorRed } from '../lib/offline.js'
 
 const ETIQUETA_ACCION = {
   alta: 'Alta', modificacion: 'Modificación', baja: 'Baja', consulta: 'Consulta',
@@ -29,11 +29,11 @@ export default function Auditoria() {
   async function cargar(desde) {
     setCargando(true)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await conTiempoLimite(supabase
         .from('registro_auditoria')
         .select('id, entidad, entidad_id, accion, ocurrido_en, usuario(nombre)')
         .order('ocurrido_en', { ascending: false })
-        .range(desde, desde + TAM_PAGINA - 1)
+        .range(desde, desde + TAM_PAGINA - 1))
 
       if (error) throw error
       setFilas((prev) => [...prev, ...(data ?? [])])
@@ -53,7 +53,7 @@ export default function Auditoria() {
 
   return (
     <div className="marco">
-      <Barra volver sub="Trazabilidad" titulo="Bitácora de auditoría" />
+      <Barra volver="/panel" sub="Trazabilidad" titulo="Bitácora de auditoría" />
 
       <main className="contenido">
         <Aviso tipo="error">{error}</Aviso>

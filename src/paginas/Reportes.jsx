@@ -89,7 +89,7 @@ export default function Reportes() {
 
   return (
     <div className="marco">
-      <Barra volver sub="Reportes de control" titulo="Brecha y tiempos de respuesta" />
+      <Barra volver="/panel" sub="Reportes de control" titulo="Brecha y tiempos de respuesta" />
 
       <main className="contenido">
         <Aviso tipo="error">{error}</Aviso>

@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { guardarMedicion } from '../lib/registro.js'
-import { encolarMedicionPendiente, esErrorDeRed, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, encolarMedicionPendiente, esErrorDeRed, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 import { calcularIndicadores } from '../lib/oms/zscore.js'
 import { clasificar } from '../lib/oms/clasificacion.js'
 import { kgALibraOnza, libraOnzaAKg } from '../lib/peso.js'
@@ -49,11 +49,11 @@ export default function NuevaMedicion() {
       }
     }
 
-    supabase
+    conTiempoLimite(supabase
       .from('paciente')
       .select('id, codigo, nombre, apellido, sexo, fecha_nacimiento, comunidad(nombre)')
       .eq('id', id)
-      .single()
+      .single())
       .then(({ data, error }) => {
         if (error) throw error
         aplicarPaciente(data)
@@ -176,11 +176,11 @@ export default function NuevaMedicion() {
     }
   }
 
-  if (paciente === null) return <div className="marco"><Barra volver titulo="Nueva medición" /><Cargando /></div>
+  if (paciente === null) return <div className="marco"><Barra volver={`/pacientes/${id}`} titulo="Nueva medición" /><Cargando /></div>
   if (!paciente) {
     return (
       <div className="marco">
-        <Barra volver titulo="Nueva medición" />
+        <Barra volver={`/pacientes/${id}`} titulo="Nueva medición" />
         <main className="contenido"><Aviso tipo="alerta">{error}</Aviso></main>
       </div>
     )
@@ -189,7 +189,7 @@ export default function NuevaMedicion() {
   return (
     <div className="marco">
       <Barra
-        volver
+        volver={`/pacientes/${id}`}
         sub={paciente.codigo}
         titulo={`${paciente.nombre} ${paciente.apellido}`}
       />

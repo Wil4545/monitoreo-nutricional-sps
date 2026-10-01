@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { calcularIndicadores } from './oms/zscore.js'
 import { clasificar } from './oms/clasificacion.js'
+import { conTiempoLimite } from './offline.js'
 
 /**
  * Registra una medición y su indicador nutricional derivado.
@@ -28,7 +29,7 @@ export async function guardarMedicion({ paciente, medicion, usuarioId }) {
 
   const dictamen = clasificar(derivados)
 
-  const { data: fila, error: errMedicion } = await supabase
+  const { data: fila, error: errMedicion } = await conTiempoLimite(supabase
     .from('medicion')
     .insert({
       paciente_id: paciente.id,
@@ -42,11 +43,11 @@ export async function guardarMedicion({ paciente, medicion, usuarioId }) {
       registrado_por: usuarioId ?? null,
     })
     .select()
-    .single()
+    .single())
 
   if (errMedicion) throw errMedicion
 
-  const { error: errIndicador } = await supabase
+  const { error: errIndicador } = await conTiempoLimite(supabase
     .from('indicador_nutricional')
     .insert({
       medicion_id: fila.id,
@@ -56,7 +57,7 @@ export async function guardarMedicion({ paciente, medicion, usuarioId }) {
       z_peso_talla: derivados.zPesoTalla,
       clasificacion: dictamen.clasificacion,
       severidad: dictamen.severidad,
-    })
+    }))
 
   if (errIndicador) throw errIndicador
 
@@ -65,14 +66,14 @@ export async function guardarMedicion({ paciente, medicion, usuarioId }) {
 
 /** Historial de un paciente, ordenado de la cita más antigua a la más reciente. */
 export async function historial(pacienteId) {
-  const { data, error } = await supabase
+  const { data, error } = await conTiempoLimite(supabase
     .from('medicion')
     .select(
       'id, fecha_medicion, peso_kg, talla_cm, medido_acostado, ' +
       'indicador_nutricional(edad_meses, z_peso_edad, z_talla_edad, z_peso_talla, clasificacion, severidad)',
     )
     .eq('paciente_id', pacienteId)
-    .order('fecha_medicion', { ascending: true })
+    .order('fecha_medicion', { ascending: true }))
 
   if (error) throw error
 
@@ -92,14 +93,14 @@ export async function historial(pacienteId) {
  * filtrar nada de esto en el cliente.
  */
 export async function todasLasMediciones() {
-  const { data, error } = await supabase
+  const { data, error } = await conTiempoLimite(supabase
     .from('medicion')
     .select(
       'paciente_id, fecha_medicion, ' +
       'paciente(nombre, apellido, comunidad_id, comunidad(nombre)), ' +
       'indicador_nutricional(severidad, clasificacion)',
     )
-    .order('fecha_medicion', { ascending: true })
+    .order('fecha_medicion', { ascending: true }))
 
   if (error) throw error
 
@@ -129,14 +130,14 @@ export async function registrarReporte(tipo, parametros, usuarioId) {
  * plan creado antes de esa migración simplemente trae ambas en null.
  */
 export async function planesDePaciente(pacienteId) {
-  const { data, error } = await supabase
+  const { data, error } = await conTiempoLimite(supabase
     .from('plan_alimentario')
     .select(
       'id, nombre, descripcion, costo_diario, fecha_inicio, fecha_fin, ' +
       'creado_en, macronutrientes, menu_sugerido, usuario(nombre)',
     )
     .eq('paciente_id', pacienteId)
-    .order('fecha_inicio', { ascending: false })
+    .order('fecha_inicio', { ascending: false }))
 
   if (error) throw error
   return (data ?? []).map((p) => ({ ...p, sugerencia: p.menu_sugerido ?? null }))
@@ -144,7 +145,7 @@ export async function planesDePaciente(pacienteId) {
 
 /** Asigna un nuevo plan alimentario a un paciente. */
 export async function asignarPlan({ pacienteId, plan, usuarioId }) {
-  const { data, error } = await supabase
+  const { data, error } = await conTiempoLimite(supabase
     .from('plan_alimentario')
     .insert({
       paciente_id: pacienteId,
@@ -158,7 +159,7 @@ export async function asignarPlan({ pacienteId, plan, usuarioId }) {
       asignado_por: usuarioId ?? null,
     })
     .select()
-    .single()
+    .single())
 
   if (error) throw error
   return { ...data, sugerencia: data.menu_sugerido ?? null }
@@ -166,9 +167,9 @@ export async function asignarPlan({ pacienteId, plan, usuarioId }) {
 
 /** Marca un plan como finalizado hoy, sin borrar su historial. */
 export async function finalizarPlan(planId) {
-  const { error } = await supabase
+  const { error } = await conTiempoLimite(supabase
     .from('plan_alimentario')
     .update({ fecha_fin: new Date().toISOString().slice(0, 10) })
-    .eq('id', planId)
+    .eq('id', planId))
   if (error) throw error
 }

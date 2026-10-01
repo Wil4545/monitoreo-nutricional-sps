@@ -12,7 +12,7 @@ import {
   Aviso, Barra, BarraAccion, Campo, Cargando, SelectorMultiple,
 } from '../componentes/Interfaz.jsx'
 import { fechaCorta, hoyISO } from '../lib/formato.js'
-import { mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, mensajeErrorRed } from '../lib/offline.js'
 
 /**
  * RF-10 — planes alimentarios generados a partir de las necesidades
@@ -51,11 +51,11 @@ export default function PlanesAlimentarios() {
   })
 
   useEffect(() => {
-    supabase
+    conTiempoLimite(supabase
       .from('paciente')
       .select('id, codigo, nombre, apellido, comunidad(nombre)')
       .eq('id', id)
-      .single()
+      .single())
       .then(({ data, error }) => {
         if (error) throw error
         setPaciente(data)
@@ -152,7 +152,7 @@ export default function PlanesAlimentarios() {
   if (paciente === null || planes === null) {
     return (
       <div className="marco">
-        <Barra volver titulo="Planes alimentarios" />
+        <Barra volver={`/pacientes/${id}`} titulo="Planes alimentarios" />
         <Cargando />
       </div>
     )
@@ -161,7 +161,7 @@ export default function PlanesAlimentarios() {
   if (!paciente) {
     return (
       <div className="marco">
-        <Barra volver titulo="Planes alimentarios" />
+        <Barra volver={`/pacientes/${id}`} titulo="Planes alimentarios" />
         <main className="contenido">
           <Aviso tipo="alerta">{error}</Aviso>
         </main>
@@ -175,7 +175,7 @@ export default function PlanesAlimentarios() {
   return (
     <div className="marco">
       <Barra
-        volver
+        volver={`/pacientes/${id}`}
         sub={paciente.codigo}
         titulo={`${paciente.nombre} ${paciente.apellido}`}
       />

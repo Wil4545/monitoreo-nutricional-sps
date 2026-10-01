@@ -82,7 +82,41 @@ export function listaPendientes() {
 export function esErrorDeRed(err) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
   const msg = String(err?.message ?? err ?? '').toLowerCase()
-  return msg.includes('fetch') || msg.includes('network') || msg.includes('conexión') || msg.includes('failed to')
+  return (
+    msg.includes('fetch') ||
+    msg.includes('network') ||
+    msg.includes('conexión') ||
+    msg.includes('failed to') ||
+    msg.includes('tiempo de espera')
+  )
+}
+
+const TIEMPO_LIMITE_MS = 8000
+
+/**
+ * Pone un límite de tiempo a una petición de red.
+ *
+ * En campo, una señal débil (el caso real de una brigada rural) no
+ * siempre falla rápido con un error claro como "Failed to fetch" — a
+ * veces la petición se queda esperando una respuesta que nunca llega, o
+ * tarda mucho más de lo razonable. `navigator.onLine` tampoco es
+ * confiable ahí: puede seguir marcando "en línea" porque el teléfono
+ * sigue asociado a una red, aunque esa red no tenga salida real a
+ * internet. Sin este límite, esas pantallas se quedarían en
+ * "Cargando…" indefinidamente en vez de caer al dato cacheado o avisar
+ * con claridad que no hay conexión — que es exactamente el síntoma que
+ * se ve sin este tiempo límite.
+ */
+export function conTiempoLimite(promesa, ms = TIEMPO_LIMITE_MS) {
+  return Promise.race([
+    promesa,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new TypeError('Failed to fetch (tiempo de espera agotado)')),
+        ms,
+      ),
+    ),
+  ])
 }
 
 /**

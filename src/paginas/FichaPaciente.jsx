@@ -6,7 +6,7 @@ import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
 import { Aviso, Barra, BarraAccion, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, fechaCorta, fechaHoraCorta, formatoZ, hoyISO } from '../lib/formato.js'
-import { esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
+import { conTiempoLimite, esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 
 /**
  * Ficha de seguimiento individual — reporte operativo de la Sección 4.3.1.
@@ -26,11 +26,11 @@ export default function FichaPaciente() {
     const claveDatos = `paciente-datos-${id}`
     const claveHistorial = `paciente-historial-${id}`
 
-    supabase
+    conTiempoLimite(supabase
       .from('paciente')
       .select('*, comunidad(nombre, sector)')
       .eq('id', id)
-      .single()
+      .single())
       .then(({ data, error }) => {
         if (error) throw error
         setPaciente(data)
@@ -70,7 +70,7 @@ export default function FichaPaciente() {
   if (paciente === null || mediciones === null) {
     return (
       <div className="marco">
-        <Barra volver titulo="Ficha del paciente" />
+        <Barra volver="/pacientes" titulo="Ficha del paciente" />
         <Cargando />
       </div>
     )
@@ -79,7 +79,7 @@ export default function FichaPaciente() {
   if (!paciente) {
     return (
       <div className="marco">
-        <Barra volver titulo="Ficha del paciente" />
+        <Barra volver="/pacientes" titulo="Ficha del paciente" />
         <main className="contenido"><Aviso tipo="alerta">{error}</Aviso></main>
       </div>
     )
@@ -91,7 +91,7 @@ export default function FichaPaciente() {
   return (
     <div className="marco">
       <Barra
-        volver
+        volver="/pacientes"
         sub={paciente.codigo}
         titulo={`${paciente.nombre} ${paciente.apellido}`}
       />
