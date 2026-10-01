@@ -5,7 +5,8 @@ import { historial } from '../lib/registro.js'
 import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
 import { Aviso, Barra, BarraAccion, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
-import { edadLegible, fechaCorta, formatoZ, hoyISO } from '../lib/formato.js'
+import { edadLegible, fechaCorta, fechaHoraCorta, formatoZ, hoyISO } from '../lib/formato.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
 
 /**
  * Ficha de seguimiento individual — reporte operativo de la Sección 4.3.1.
@@ -19,21 +20,47 @@ export default function FichaPaciente() {
   const [paciente, setPaciente] = useState(null)
   const [mediciones, setMediciones] = useState(null)
   const [error, setError] = useState('')
+  const [cacheFecha, setCacheFecha] = useState(null)
 
   useEffect(() => {
+    const claveDatos = `paciente-datos-${id}`
+    const claveHistorial = `paciente-historial-${id}`
+
     supabase
       .from('paciente')
       .select('*, comunidad(nombre, sector)')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setPaciente(data)
+        guardarEnCache(claveDatos, data)
+      })
+      .catch((e) => {
+        const cache = leerDeCache(claveDatos)
+        if (cache && (navigator.onLine === false || esErrorDeRed(e))) {
+          setPaciente(cache.datos)
+          setCacheFecha(cache.guardadoEn)
+        } else {
+          setError(e.message)
+        }
       })
 
     historial(id)
-      .then(setMediciones)
-      .catch((e) => { setError(e.message); setMediciones([]) })
+      .then((datos) => {
+        setMediciones(datos)
+        guardarEnCache(claveHistorial, datos)
+      })
+      .catch((e) => {
+        const cache = leerDeCache(claveHistorial)
+        if (cache && (navigator.onLine === false || esErrorDeRed(e))) {
+          setMediciones(cache.datos)
+          setCacheFecha(cache.guardadoEn)
+        } else {
+          setError(e.message)
+          setMediciones([])
+        }
+      })
   }, [id])
 
   if (!paciente || mediciones === null) {
@@ -58,6 +85,12 @@ export default function FichaPaciente() {
 
       <main className="contenido">
         <Aviso tipo="error">{error}</Aviso>
+        {cacheFecha && (
+          <Aviso tipo="alerta">
+            Sin conexión: mostrando la última copia guardada en este dispositivo
+            ({fechaHoraCorta(cacheFecha)}). Puede no incluir citas más recientes.
+          </Aviso>
+        )}
         {state?.sinConexion && (
           <Aviso tipo="alerta">
             Medición guardada en este dispositivo sin conexión. Se sincronizará

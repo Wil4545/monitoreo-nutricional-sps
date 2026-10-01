@@ -1,20 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { guardarMedicion } from '../lib/registro.js'
-import { contarPendientes, sincronizarPendientes } from '../lib/offline.js'
+import { listaPendientes, sincronizarPendientes } from '../lib/offline.js'
+import { fechaHoraCorta } from '../lib/formato.js'
 
 /**
  * Aviso persistente de mediciones guardadas sin conexión (RF-11/RF-12,
  * alcance acotado — ver lib/offline.js). Vive junto a las rutas
  * autenticadas en App.jsx, así que es visible sin importar en qué
  * pantalla esté el usuario cuando vuelve la señal.
+ *
+ * Muestra la lista completa de pendientes (no solo un conteo), porque
+ * la cola admite más de un registro a la vez: se puede seguir
+ * registrando mediciones sin conexión y todas quedan guardadas en este
+ * dispositivo hasta que haya señal para sincronizarlas.
  */
 export default function EstadoSincronizacion() {
-  const [pendientes, setPendientes] = useState(0)
+  const [pendientes, setPendientes] = useState([])
   const [sincronizando, setSincronizando] = useState(false)
+  const [detalleAbierto, setDetalleAbierto] = useState(false)
   const enCurso = useRef(false)
 
-  function actualizarConteo() {
-    setPendientes(contarPendientes())
+  function actualizarLista() {
+    setPendientes(listaPendientes())
   }
 
   async function sincronizar() {
@@ -24,17 +31,17 @@ export default function EstadoSincronizacion() {
     try {
       await sincronizarPendientes(guardarMedicion)
     } finally {
-      actualizarConteo()
+      actualizarLista()
       setSincronizando(false)
       enCurso.current = false
     }
   }
 
   useEffect(() => {
-    actualizarConteo()
+    actualizarLista()
     // Revisa cada pocos segundos por si otra pantalla encoló algo, y de
     // una vez intenta sincronizar si ya hay señal al entrar.
-    const intervalo = setInterval(actualizarConteo, 4000)
+    const intervalo = setInterval(actualizarLista, 4000)
     window.addEventListener('online', sincronizar)
     if (navigator.onLine) sincronizar()
     return () => {
@@ -44,17 +51,49 @@ export default function EstadoSincronizacion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (pendientes === 0) return null
+  if (pendientes.length === 0) return null
 
   return (
-    <div className="aviso aviso--alerta" style={{ margin: '0.75rem 1rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <span>
-        {pendientes} {pendientes === 1 ? 'medición guardada' : 'mediciones guardadas'} sin
-        conexión, pendiente{pendientes === 1 ? '' : 's'} de sincronizar.
-      </span>
-      <button type="button" className="boton boton--secundario" onClick={sincronizar} disabled={sincronizando}>
-        {sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
-      </button>
+    <div
+      className="aviso aviso--alerta"
+      style={{ margin: '0.75rem 1rem 0' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <span>
+          {pendientes.length} {pendientes.length === 1 ? 'medición guardada' : 'mediciones guardadas'} sin
+          conexión, pendiente{pendientes.length === 1 ? '' : 's'} de sincronizar.
+        </span>
+        <button type="button" className="boton boton--secundario" onClick={sincronizar} disabled={sincronizando}>
+          {sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
+        </button>
+        {pendientes.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setDetalleAbierto((v) => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              font: 'inherit',
+              color: 'inherit',
+            }}
+          >
+            {detalleAbierto ? 'Ocultar detalle' : 'Ver cuáles'}
+          </button>
+        )}
+      </div>
+
+      {detalleAbierto && (
+        <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
+          {pendientes.map((item) => (
+            <li key={item.idLocal}>
+              {item.paciente?.nombre} {item.paciente?.apellido} — guardado {fechaHoraCorta(item.guardadoEn)}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

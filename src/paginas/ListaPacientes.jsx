@@ -4,7 +4,10 @@ import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
-import { edadLegible, fechaCorta, hoyISO } from '../lib/formato.js'
+import { edadLegible, fechaCorta, fechaHoraCorta, hoyISO } from '../lib/formato.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
+
+const CLAVE_CACHE = 'pacientes'
 
 export default function ListaPacientes() {
   const { perfil } = useSesion()
@@ -12,6 +15,7 @@ export default function ListaPacientes() {
   const [pacientes, setPacientes] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [error, setError] = useState('')
+  const [cacheFecha, setCacheFecha] = useState(null)
 
   useEffect(() => {
     supabase
@@ -19,8 +23,23 @@ export default function ListaPacientes() {
       .select('*')
       .order('severidad', { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setPacientes(data ?? [])
+        setCacheFecha(null)
+        guardarEnCache(CLAVE_CACHE, data ?? [])
+      })
+      .catch((e) => {
+        // Sin conexión (o la petición nunca llegó al servidor): se
+        // muestra la última lista que sí se pudo cargar en línea, en
+        // vez de dejar la pantalla en blanco.
+        const cache = leerDeCache(CLAVE_CACHE)
+        if (cache && (navigator.onLine === false || esErrorDeRed(e))) {
+          setPacientes(cache.datos)
+          setCacheFecha(cache.guardadoEn)
+        } else {
+          setError(e.message)
+          setPacientes([])
+        }
       })
   }, [])
 
@@ -53,6 +72,12 @@ export default function ListaPacientes() {
         )}
 
         <Aviso tipo="error">{error}</Aviso>
+        {cacheFecha && (
+          <Aviso tipo="alerta">
+            Sin conexión: mostrando la última lista guardada en este dispositivo
+            ({fechaHoraCorta(cacheFecha)}). Puede no incluir cambios recientes.
+          </Aviso>
+        )}
 
         <div className="campo">
           <label className="campo__etiqueta" htmlFor="buscar">

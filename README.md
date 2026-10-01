@@ -218,14 +218,15 @@ src/
     registro.js        Mediciones, historial, reportes y planes alimentarios (RF-09, RF-10)
     nutricion.js        Catálogo de alimentos y generador de menú-guía (RF-10)
     pdfPlan.js           Genera el PDF descargable del plan (RF-10)
-    offline.js           Cola de mediciones sin conexión (RF-11, RF-12)
+    offline.js           Cola de mediciones sin conexión y caché de lectura (RF-11, RF-12)
+    peso.js              Conversión kg <-> libras/onzas
     formato.js         Utilidades de fecha, edad y formato numérico
     demo.js             Datos ficticios para /demostracion
   componentes/
     GraficoTrayectoria.jsx  Gráfico de dispersión con tendencia (RF-05)
     CapaCalor.jsx             Mapa de calor sobre Leaflet (RF-07)
     RutaProtegida.jsx          Candado de pantalla por rol (RF-13)
-    EstadoSincronizacion.jsx   Aviso global de mediciones pendientes (RF-12)
+    EstadoSincronizacion.jsx   Aviso global de mediciones pendientes, con detalle por registro (RF-12)
     Interfaz.jsx             Barra, campos, botones, insignias, selector múltiple
   paginas/
     Ingreso.jsx
@@ -292,22 +293,45 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
   registrar mediciones sin conexión — eso sigue siendo RF-11/RF-12, no
   esto. Ver el comentario al inicio de `public/sw.js`.
 - ~~RF-11, RF-12 — operación sin conexión y sincronización~~ — **alcance
-  acotado**, implementado en `src/lib/offline.js`: si al guardar una
-  medición no hay red, se guarda en este dispositivo (`localStorage`) y
-  se sincroniza sola al recuperar señal, o con el botón "Sincronizar
-  ahora" que aparece en cualquier pantalla (`EstadoSincronizacion.jsx`).
-  Verificado con Playwright simulando la app sin conexión: la medición
-  se encola sin llegar a la red, y al reconectar se sincroniza sin
-  intervención.
+  acotado**, implementado en `src/lib/offline.js`:
+  - **Escritura en cola**: si al guardar una medición no hay red, se
+    guarda en este dispositivo (`localStorage`) y se sincroniza sola al
+    recuperar señal, o con el botón "Sincronizar ahora" que aparece en
+    cualquier pantalla (`EstadoSincronizacion.jsx`). La cola admite
+    **más de un registro a la vez** — se puede seguir tomando
+    mediciones sin conexión (por ejemplo, varias citas seguidas en una
+    comunidad sin señal) y todas quedan guardadas hasta que haya
+    conexión; el aviso muestra el total y, con "Ver cuáles", el detalle
+    de cada una (paciente y hora en que se guardó).
+  - **Lectura cacheada**: el Panel, la lista de pacientes y la ficha de
+    cada uno guardan una copia de la última carga exitosa
+    (`guardarEnCache`/`leerDeCache` en `offline.js`). Si esa misma
+    pantalla se abre sin conexión — incluso recargando la página — se
+    muestra esa copia en vez de quedarse en blanco, con un aviso que
+    indica que es la última guardada y la fecha/hora en que se guardó.
+    Esto también permite abrir "Registrar nueva medición" sin conexión
+    para un paciente cuya ficha ya se consultó antes, reutilizando esos
+    mismos datos (nombre, sexo, fecha de nacimiento) para calcular la
+    clasificación.
+
+  Verificado con Playwright simulando la app sin conexión: dos
+  mediciones seguidas se encolan sin llegar a la red y ambas aparecen
+  en el detalle de pendientes; el Panel, la lista y una ficha muestran
+  sus datos cacheados sin conexión; y al reconectar, la cola se
+  sincroniza sola sin intervención.
+
   **Lo que NO cubre este alcance** (documentado también en el propio
   `offline.js`): no hay resolución de conflictos si dos dispositivos
   registraran la misma cita mientras ambos están sin conexión —cada uno
-  se sincronizaría como una cita separada—, y solo cubre el flujo de
-  *guardar una medición*, no cachear catálogos para *consultar*
-  pacientes o comunidades sin conexión. Un verdadero RF-11/RF-12 con
-  resolución de conflictos sigue siendo trabajo futuro, pero el caso de
-  uso principal (no perder una medición por falta de señal en campo) ya
-  funciona.
+  se sincronizaría como una cita separada—; la copia cacheada es de
+  solo lectura y no se actualiza sola (hay que volver a abrir la
+  pantalla con conexión para refrescarla); y solo se cachea lo que ya
+  se consultó al menos una vez en línea — un paciente nunca abierto
+  antes no se puede ver por primera vez sin conexión. Un verdadero
+  RF-11/RF-12 con resolución de conflictos y precarga completa sigue
+  siendo trabajo futuro, pero el caso de uso principal (no perder una
+  medición ni quedarse sin poder consultar un paciente por falta de
+  señal en campo) ya funciona.
 - ~~RNF-05 — minimización y seudonimización de datos de menores~~ —
   completado en `supabase/11_auditoria_minimizada.sql`: la bitácora de
   auditoría (`registro_auditoria`) ya no duplica nombre completo, fecha

@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { guardarMedicion } from '../lib/registro.js'
-import { encolarMedicionPendiente, esErrorDeRed } from '../lib/offline.js'
+import { encolarMedicionPendiente, esErrorDeRed, leerDeCache } from '../lib/offline.js'
 import { calcularIndicadores } from '../lib/oms/zscore.js'
 import { clasificar } from '../lib/oms/clasificacion.js'
 import { kgALibraOnza, libraOnzaAKg } from '../lib/peso.js'
@@ -35,22 +35,39 @@ export default function NuevaMedicion() {
   const [coords, setCoords] = useState(null)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [datosDeCache, setDatosDeCache] = useState(false)
 
   useEffect(() => {
+    function aplicarPaciente(data) {
+      setPaciente(data)
+      // La posición de medición se propone según la edad: acostado
+      // antes de los 24 meses, de pie después.
+      if (data) {
+        const meses =
+          (new Date() - new Date(data.fecha_nacimiento)) / 86400000 / 30.4375
+        setF((v) => ({ ...v, medido_acostado: meses < 24 }))
+      }
+    }
+
     supabase
       .from('paciente')
       .select('id, codigo, nombre, apellido, sexo, fecha_nacimiento, comunidad(nombre)')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
-        if (error) setError(error.message)
-        setPaciente(data)
-        // La posición de medición se propone según la edad: acostado
-        // antes de los 24 meses, de pie después.
-        if (data) {
-          const meses =
-            (new Date() - new Date(data.fecha_nacimiento)) / 86400000 / 30.4375
-          setF((v) => ({ ...v, medido_acostado: meses < 24 }))
+        if (error) throw error
+        aplicarPaciente(data)
+      })
+      .catch((e) => {
+        // Sin conexión: se reutiliza la copia que ya quedó guardada al
+        // abrir la ficha de este paciente (lib/offline.js), para poder
+        // seguir registrando una medición aunque no haya señal.
+        const cache = leerDeCache(`paciente-datos-${id}`)
+        if (cache && (navigator.onLine === false || esErrorDeRed(e))) {
+          aplicarPaciente(cache.datos)
+          setDatosDeCache(true)
+        } else {
+          setError(e.message)
         }
       })
   }, [id])
@@ -174,6 +191,12 @@ export default function NuevaMedicion() {
         )}
 
         <Aviso tipo="error">{error}</Aviso>
+        {datosDeCache && (
+          <Aviso tipo="alerta">
+            Sin conexión: datos del paciente tomados de la última copia guardada
+            en este dispositivo. La medición se guardará igual, en cola.
+          </Aviso>
+        )}
 
         <form id="form-medicion" onSubmit={guardar}>
           <div className="tarjeta">

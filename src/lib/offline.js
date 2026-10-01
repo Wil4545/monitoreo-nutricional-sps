@@ -17,12 +17,17 @@
  * pero sigue siendo una limitación real de este alcance, no un caso
  * cubierto silenciosamente.
  *
- * Tampoco cachea catálogos (pacientes, comunidades) para consulta sin
- * conexión — solo el flujo de ESCRITURA de una medición nueva. Abrir la
- * lista de pacientes o una ficha sin conexión sigue necesitando red.
+ * Además de la cola de escritura, este módulo guarda una copia de
+ * lectura (`guardarEnCache`/`leerDeCache`): cada vez que la lista de
+ * pacientes o la ficha de uno se cargan con éxito estando en línea, se
+ * deja una copia en este dispositivo. Si luego se abre esa misma
+ * pantalla sin conexión, se muestra esa copia en vez de una pantalla en
+ * blanco, con aviso de que es la última que se pudo guardar — no se
+ * refresca sola ni se mezcla con nada nuevo mientras no haya señal.
  */
 
 const CLAVE = 'mnsps_mediciones_pendientes'
+const PREFIJO_CACHE = 'mnsps_cache_'
 
 function leer() {
   try {
@@ -57,6 +62,15 @@ export function encolarMedicionPendiente({ paciente, medicion, usuarioId }) {
 
 export function contarPendientes() {
   return leer().length
+}
+
+/**
+ * Lista completa de mediciones en cola (no solo el conteo), para
+ * mostrar qué queda pendiente — por ejemplo cuando se guardaron varias
+ * mediciones distintas sin conexión antes de recuperar la señal.
+ */
+export function listaPendientes() {
+  return leer()
 }
 
 /**
@@ -102,4 +116,35 @@ export async function sincronizarPendientes(guardarMedicion) {
 
   escribir(restantes)
   return { sincronizadas, restantes: restantes.length }
+}
+
+/**
+ * Guarda una copia de datos ya obtenidos en línea (lista de pacientes,
+ * ficha de uno) para poder mostrarlos si luego se abre la misma
+ * pantalla sin conexión. No reemplaza al servidor: solo guarda la
+ * última respuesta exitosa por `clave`.
+ */
+export function guardarEnCache(clave, datos) {
+  try {
+    localStorage.setItem(
+      PREFIJO_CACHE + clave,
+      JSON.stringify({ datos, guardadoEn: new Date().toISOString() }),
+    )
+  } catch {
+    // Sin espacio o almacenamiento no disponible: la pantalla ya cargó
+    // en línea de todas formas, simplemente no queda copia para luego.
+  }
+}
+
+/**
+ * Lee la última copia cacheada bajo `clave`.
+ * Devuelve `{ datos, guardadoEn }` o `null` si nunca se guardó una.
+ */
+export function leerDeCache(clave) {
+  try {
+    const crudo = localStorage.getItem(PREFIJO_CACHE + clave)
+    return crudo ? JSON.parse(crudo) : null
+  } catch {
+    return null
+  }
 }

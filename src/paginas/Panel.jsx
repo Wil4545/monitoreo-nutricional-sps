@@ -4,6 +4,10 @@ import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
+import { esErrorDeRed, guardarEnCache, leerDeCache } from '../lib/offline.js'
+import { fechaHoraCorta } from '../lib/formato.js'
+
+const CLAVE_CACHE = 'panel'
 
 const COLOR_SEVERIDAD = {
   0: 'var(--sev-0)', 1: 'var(--sev-1)', 2: 'var(--sev-2)', 3: 'var(--sev-3)',
@@ -24,14 +28,27 @@ export default function Panel() {
   const { perfil, salir } = useSesion()
   const [filas, setFilas] = useState(null)
   const [error, setError] = useState('')
+  const [cacheFecha, setCacheFecha] = useState(null)
 
   useEffect(() => {
     supabase
       .from('v_paciente_estado')
       .select('*')
       .then(({ data, error }) => {
-        if (error) setError(error.message)
+        if (error) throw error
         setFilas(data ?? [])
+        setCacheFecha(null)
+        guardarEnCache(CLAVE_CACHE, data ?? [])
+      })
+      .catch((e) => {
+        const cache = leerDeCache(CLAVE_CACHE)
+        if (cache && (navigator.onLine === false || esErrorDeRed(e))) {
+          setFilas(cache.datos)
+          setCacheFecha(cache.guardadoEn)
+        } else {
+          setError(e.message)
+          setFilas([])
+        }
       })
   }, [])
 
@@ -77,6 +94,12 @@ export default function Panel() {
         )}
 
         <Aviso tipo="error">{error}</Aviso>
+        {cacheFecha && (
+          <Aviso tipo="alerta">
+            Sin conexión: cifras de la última carga guardada en este dispositivo
+            ({fechaHoraCorta(cacheFecha)}).
+          </Aviso>
+        )}
 
         {!stats ? (
           <Cargando>Cargando panel…</Cargando>
