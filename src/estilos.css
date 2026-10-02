@@ -416,6 +416,7 @@ input[aria-invalid='true'] { border-color: var(--sev-3); }
 .aviso--error { background: var(--sev-3-fondo); border-color: #e3aeae; color: #7a1616; }
 .aviso--info  { background: var(--jade-tenue); border-color: #b6d5cb; color: var(--jade-oscuro); }
 .aviso--alerta{ background: var(--sev-1-fondo); border-color: #e4cd93; color: #7d5806; }
+.aviso--exito { background: var(--sev-0-fondo); border-color: #bcdccf; color: var(--sev-0); }
 
 .vacio {
   text-align: center;

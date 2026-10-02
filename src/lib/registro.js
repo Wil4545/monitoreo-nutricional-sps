@@ -123,6 +123,58 @@ export async function registrarReporte(tipo, parametros, usuarioId) {
 }
 
 /**
+ * Total de pacientes dados de alta en el sistema (RF-01), sin importar si
+ * ya tienen una medición registrada. Es el numerador del indicador de
+ * digitalización (Sección 1.2.3): cuántos quedaron en el sistema frente a
+ * los que de verdad se atendieron en el periodo (ese segundo número no lo
+ * tiene el sistema — viene del SIGSA-2 físico — por eso se captura a mano).
+ */
+export async function totalPacientesRegistrados() {
+  const { count, error } = await conTiempoLimite(supabase
+    .from('paciente')
+    .select('id', { count: 'exact', head: true }))
+  if (error) throw error
+  return count ?? 0
+}
+
+/**
+ * Guarda una medición del indicador de digitalización (RF-09, Sección
+ * 4.3.2): qué porcentaje de los pacientes atendidos en un periodo quedó
+ * digitalizado en el sistema. El "total atendidos" no existe en ninguna
+ * tabla — es el dato del SIGSA-2 en papel, así que lo captura a mano quien
+ * genera el reporte. Se guarda como una fila más en `reporte` (igual que
+ * cualquier otro reporte de control), con el cálculo ya resuelto en
+ * `parametros`, para que el histórico no cambie si después se registran
+ * más pacientes.
+ */
+export async function guardarIndicadorDigitalizacion({ periodo, totalAtendidos, registrados }, usuarioId) {
+  const porcentaje = totalAtendidos > 0 ? Math.round((registrados / totalAtendidos) * 100) : 0
+  await registrarReporte(
+    'registros_digitalizados',
+    { periodo, total_atendidos: totalAtendidos, registrados, porcentaje },
+    usuarioId,
+  )
+  return porcentaje
+}
+
+/** Histórico de mediciones del indicador de digitalización, más reciente primero. */
+export async function historialDigitalizacion() {
+  const { data, error } = await conTiempoLimite(supabase
+    .from('reporte')
+    .select('id, parametros, generado_en, usuario:generado_por(nombre)')
+    .eq('tipo', 'registros_digitalizados')
+    .order('generado_en', { ascending: false })
+    .limit(12))
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    generadoEn: r.generado_en,
+    generadoPor: r.usuario?.nombre ?? null,
+    ...r.parametros,
+  }))
+}
+
+/**
  * Planes alimentarios de un paciente (RF-10), del más reciente al más
  * antiguo. La tabla `plan_alimentario` existe desde el primer avance
  * (01_schema.sql); `macronutrientes` y `menu_sugerido` se agregaron en

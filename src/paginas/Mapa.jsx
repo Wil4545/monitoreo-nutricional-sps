@@ -33,6 +33,11 @@ const CENTRO_DISTRITO = [14.683333, -90.65]
  * por comunidad es además más fiel al texto exacto de RF-07, que pide
  * la concentración de casos "por comunidad o sector", no por punto
  * exacto de cada medición.
+ *
+ * También hace de "sala situacional digital" (Sección 4.3.2): la franja
+ * de indicadores agregados de arriba y el mapa de calor debajo salen de
+ * la misma consulta — no hay una pantalla aparte que mantener
+ * sincronizada con esta.
  */
 export default function Mapa() {
   const [pacientes, setPacientes] = useState(null)
@@ -99,6 +104,19 @@ export default function Mapa() {
     ? comunidades.filter((c) => c.latitud == null || c.longitud == null).length
     : 0
 
+  // Indicadores agregados de la sala situacional — mismos datos que ya
+  // trae el mapa, resumidos en cifras en vez de puntos.
+  const indicadores = useMemo(() => {
+    if (!pacientes) return null
+    const total = pacientes.length
+    const alterados = pacientes.filter((p) => (p.severidad ?? 0) > 0).length
+    const severos = pacientes.filter((p) => p.severidad === 3).length
+    const topComunidad = resumenComunidades.length
+      ? [...resumenComunidades].sort((a, b) => b.alterados - a.alterados)[0]
+      : null
+    return { total, alterados, severos, topComunidad }
+  }, [pacientes, resumenComunidades])
+
   return (
     <div className="marco">
       <Barra volver="/panel" sub="Distribución geográfica" titulo="Mapa" />
@@ -119,6 +137,31 @@ export default function Mapa() {
           </div>
         ) : (
           <>
+            {indicadores && (
+              <div className="metricas" style={{ marginBottom: '0.75rem' }}>
+                <div className="metrica">
+                  <div className="metrica__valor">{indicadores.total}</div>
+                  <div className="metrica__etiqueta">Pacientes en el sistema</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica__valor" style={{ color: indicadores.alterados ? 'var(--sev-2)' : undefined }}>
+                    {indicadores.alterados}
+                  </div>
+                  <div className="metrica__etiqueta">Con alguna alteración</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica__valor" style={{ color: 'var(--sev-3)' }}>{indicadores.severos}</div>
+                  <div className="metrica__etiqueta">Casos severos</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica__valor" style={{ fontSize: '1.1rem' }}>
+                    {indicadores.topComunidad ? indicadores.topComunidad.comunidad : '—'}
+                  </div>
+                  <div className="metrica__etiqueta">Comunidad con más casos</div>
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: '0.75rem' }}>
               <Segmentos
                 etiqueta="Tipo de vista"

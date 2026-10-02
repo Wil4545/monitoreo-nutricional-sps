@@ -1,19 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSesion } from '../contexto/Sesion.jsx'
-import { todasLasMediciones, registrarReporte } from '../lib/registro.js'
-import { Aviso, Barra, Cargando, Insignia } from '../componentes/Interfaz.jsx'
-import { fechaCorta } from '../lib/formato.js'
+import {
+  todasLasMediciones, registrarReporte,
+  totalPacientesRegistrados, guardarIndicadorDigitalizacion, historialDigitalizacion,
+} from '../lib/registro.js'
+import { Aviso, Barra, Cargando, Insignia, Campo } from '../componentes/Interfaz.jsx'
+import { fechaCorta, fechaHoraCorta } from '../lib/formato.js'
 import { mensajeErrorRed } from '../lib/offline.js'
+
+const META_DIGITALIZACION = 70 // meta a 6 meses, Sección 1.2.3
 
 /**
  * Reportes de control — RF-09 (Sección 4.2.1, 4.3.2).
  *
- * Dos reportes, los dos de mayor valor gerencial según tu propio
- * documento: brecha nutricional por comunidad (para priorizar rutas de
- * brigadas) y tiempo de respuesta ante casos críticos — que es
- * exactamente el indicador con el que tu hipótesis promete una
- * reducción del 50% (Sección 1.2.1). Sin este reporte no había forma de
- * medir esa meta.
+ * Cuatro reportes, los cuatro que describe la Sección 4.3.2:
+ * - Brecha nutricional por comunidad (priorizar rutas de brigadas).
+ * - Tiempo de respuesta ante casos severos — el indicador con el que tu
+ *   hipótesis promete una reducción del 50% (Sección 1.2.1).
+ * - Registros digitalizados — avance hacia la meta de 70% (Sección 1.2.3).
+ * - Sala situacional digital: se implementó dentro de Mapa.jsx (no aquí),
+ *   porque es justamente mapa de calor + indicadores agregados en tiempo
+ *   real — lo que esa pantalla ya hace. Duplicarla en una página aparte
+ *   solo habría significado mantener la misma consulta dos veces.
  *
  * Cada vista genera una fila en la tabla `reporte` (RF-09 lo pide
  * implícitamente al modelar esa entidad en la Figura 5) — es una
@@ -32,6 +40,48 @@ export default function Reportes() {
       })
       .catch((e) => { setError(mensajeErrorRed(e, 'los reportes')); setMediciones([]) })
   }, [perfil])
+
+  // --- Registros digitalizados (RF-09, Sección 4.3.2) ---
+  const [totalRegistrados, setTotalRegistrados] = useState(null)
+  const [historialDig, setHistorialDig] = useState(null)
+  const [totalAtendidos, setTotalAtendidos] = useState('')
+  const [periodo, setPeriodo] = useState('')
+  const [guardandoDig, setGuardandoDig] = useState(false)
+  const [errorDig, setErrorDig] = useState('')
+  const [avisoDig, setAvisoDig] = useState('')
+
+  useEffect(() => {
+    totalPacientesRegistrados()
+      .then(setTotalRegistrados)
+      .catch((e) => setErrorDig(mensajeErrorRed(e, 'el total de pacientes')))
+    historialDigitalizacion()
+      .then(setHistorialDig)
+      .catch((e) => setErrorDig(mensajeErrorRed(e, 'el histórico de digitalización')))
+  }, [])
+
+  async function guardarDigitalizacion(ev) {
+    ev.preventDefault()
+    const n = Number(totalAtendidos)
+    if (!periodo.trim()) { setErrorDig('Indica a qué periodo corresponde (por ejemplo, "Agosto 2026").'); return }
+    if (!n || n <= 0) { setErrorDig('Ingresa el total de pacientes atendidos en ese periodo, según el SIGSA-2 físico.'); return }
+    setGuardandoDig(true)
+    setErrorDig('')
+    setAvisoDig('')
+    try {
+      await guardarIndicadorDigitalizacion(
+        { periodo: periodo.trim(), totalAtendidos: n, registrados: totalRegistrados ?? 0 },
+        perfil?.id,
+      )
+      setHistorialDig(await historialDigitalizacion())
+      setAvisoDig('Medición guardada en la bitácora de reportes.')
+      setPeriodo('')
+      setTotalAtendidos('')
+    } catch (e) {
+      setErrorDig(mensajeErrorRed(e, 'guardar el indicador de digitalización'))
+    } finally {
+      setGuardandoDig(false)
+    }
+  }
 
   const porComunidad = useMemo(() => {
     if (!mediciones) return []
@@ -170,6 +220,67 @@ export default function Reportes() {
             </div>
           </>
         )}
+
+        <div className="tarjeta">
+          <p className="eyebrow">Registros digitalizados</p>
+          <p className="campo__ayuda" style={{ marginTop: '0.25rem' }}>
+            Compara cuántos pacientes quedaron en el sistema contra el total
+            atendido en el centro de salud en el mismo periodo (SIGSA-2 en
+            papel). El sistema no conoce ese segundo número — se ingresa a
+            mano cada vez que se quiera medir el avance. Meta: {META_DIGITALIZACION}%
+            en los primeros seis meses de operación (línea base 0%).
+          </p>
+
+          <Aviso tipo="error">{errorDig}</Aviso>
+          <Aviso tipo="exito">{avisoDig}</Aviso>
+
+          <div className="metricas" style={{ margin: '0.75rem 0' }}>
+            <div className="metrica">
+              <div className="metrica__valor">
+                {totalRegistrados == null ? '…' : totalRegistrados}
+              </div>
+              <div className="metrica__etiqueta">Pacientes en el sistema (ahora)</div>
+            </div>
+          </div>
+
+          <form onSubmit={guardarDigitalizacion}>
+            <div className="par">
+              <Campo etiqueta="Periodo" id="periodo-dig" ayuda='Por ejemplo, "Agosto 2026".'>
+                <input id="periodo-dig" value={periodo}
+                  onChange={(e) => setPeriodo(e.target.value)} autoComplete="off" />
+              </Campo>
+              <Campo etiqueta="Total atendidos en ese periodo (SIGSA-2)" id="atendidos-dig">
+                <input id="atendidos-dig" type="number" min="1" inputMode="numeric"
+                  value={totalAtendidos} onChange={(e) => setTotalAtendidos(e.target.value)} />
+              </Campo>
+            </div>
+            <button className="boton boton--secundario" disabled={guardandoDig}>
+              {guardandoDig ? 'Guardando…' : 'Guardar medición del periodo'}
+            </button>
+          </form>
+
+          {historialDig === null ? (
+            <Cargando>Cargando histórico…</Cargando>
+          ) : historialDig.length > 0 && (
+            <ul className="lista" style={{ marginTop: '0.75rem' }}>
+              {historialDig.map((h) => (
+                <li key={h.id} className="lista__fila" style={{ cursor: 'default' }}>
+                  <div className="lista__cuerpo">
+                    <div className="lista__nombre">{h.periodo}</div>
+                    <div className="lista__meta">
+                      {h.registrados} de {h.total_atendidos} atendidos
+                      {h.generadoPor && ` · registrado por ${h.generadoPor}`}
+                      {' · '}{fechaHoraCorta(h.generadoEn)}
+                    </div>
+                  </div>
+                  <span className={`insignia insignia--${h.porcentaje >= META_DIGITALIZACION ? 0 : h.porcentaje >= META_DIGITALIZACION / 2 ? 1 : 2}`}>
+                    {h.porcentaje}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </main>
     </div>
   )

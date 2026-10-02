@@ -215,7 +215,7 @@ src/
     clasificacion.js  Reglas de clasificación nutricional (RF-04)
   lib/
     supabase.js       Cliente de conexión
-    registro.js        Mediciones, historial, reportes y planes alimentarios (RF-09, RF-10)
+    registro.js        Mediciones, historial, reportes, digitalización y planes alimentarios (RF-09, RF-10)
     nutricion.js        Catálogo de alimentos y generador de menú-guía (RF-10)
     pdfPlan.js           Genera el PDF descargable del plan (RF-10)
     offline.js           Cola de mediciones sin conexión y caché de lectura (RF-11, RF-12)
@@ -237,8 +237,8 @@ src/
     NuevaMedicion.jsx        RF-02, RF-03, RF-04
     FichaPaciente.jsx        Reporte operativo (Sección 4.3.1)
     PlanesAlimentarios.jsx    Generador de planes + descarga en PDF — RF-10
-    Mapa.jsx                  Mapa de calor por comunidad — RF-06, RF-07
-    Reportes.jsx               Brecha nutricional y tiempos — RF-09
+    Mapa.jsx                  Mapa de calor + sala situacional — RF-06, RF-07, RF-09
+    Reportes.jsx               Brecha nutricional, tiempos y registros digitalizados — RF-09
     Auditoria.jsx             Consulta de la bitácora — RF-14, RNF-10
     Demostracion.jsx
 
@@ -293,6 +293,33 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
   propósito**: el Service Worker no cachea datos de Supabase ni permite
   registrar mediciones sin conexión — eso sigue siendo RF-11/RF-12, no
   esto. Ver el comentario al inicio de `public/sw.js`.
+- ~~RF-09 — los cuatro reportes de control de la Sección 4.3.2~~ — ya
+  estaban hechos "brecha nutricional por comunidad" y "tiempo de
+  respuesta ante casos severos" (`src/paginas/Reportes.jsx`); faltaban
+  los otros dos:
+  - **Registros digitalizados**: nueva tarjeta en Reportes, debajo de
+    las dos anteriores. El sistema sabe cuántos pacientes tiene dados de
+    alta (`totalPacientesRegistrados()` en `registro.js`), pero no
+    cuántos se atendieron de verdad en un periodo — ese número vive en
+    el SIGSA-2 físico, fuera del sistema — así que se captura a mano
+    (periodo + total atendido) y el sistema calcula el porcentaje contra
+    la meta del 70% (Sección 1.2.3). Cada medición queda guardada como
+    una fila más en `reporte` (misma tabla que ya usan los otros
+    reportes), con el cálculo ya resuelto, para que el histórico no
+    cambie si después se da de alta a más pacientes.
+  - **Sala situacional digital**: en vez de una pantalla nueva que
+    duplicara la consulta del mapa, se agregó una franja de indicadores
+    agregados (total de pacientes, % con alguna alteración, casos
+    severos, comunidad con más casos) arriba del mapa de calor existente
+    en `src/paginas/Mapa.jsx` — es, literalmente, "mapa de calor +
+    indicadores agregados del municipio en tiempo real", que es como la
+    Sección 4.3.2 define la sala situacional, usando los mismos datos
+    que el mapa ya cargaba.
+
+  Verificado con Playwright: la franja de indicadores del mapa muestra
+  las cifras correctas; guardar una medición de digitalización
+  (periodo + total atendidos) la agrega al histórico con el porcentaje
+  ya calculado.
 - **Navegación "volver" por ruta explícita, no por historial** (fix de
   adaptabilidad móvil, `src/componentes/Interfaz.jsx`): el botón "←" de
   cada pantalla usaba `navigate(-1)` (retroceder en el historial del
