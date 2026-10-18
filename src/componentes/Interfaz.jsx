@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { IconoVolver } from './Iconos.jsx'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
 
 /**
@@ -28,7 +29,7 @@ export function Barra({ titulo, sub, volver = false, accion = null }) {
           onClick={irAtras}
           aria-label="Volver"
         >
-          ←
+          <IconoVolver />
         </button>
       )}
       <div className="barra__titulo">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { pacientesDemo } from '../lib/demo.js'
 import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
 import { Aviso, Barra, Insignia } from '../componentes/Interfaz.jsx'
+import { IconoCerrar } from '../componentes/Iconos.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
 import { edadLegible, fechaCorta, formatoZ, hoyISO } from '../lib/formato.js'
 
@@ -23,7 +24,7 @@ export default function Demostracion() {
         titulo="Ficha de seguimiento"
         accion={
           <button className="barra__volver" onClick={() => navegar('/')} aria-label="Salir de la demostración">
-            ✕
+            <IconoCerrar />
           </button>
         }
       />

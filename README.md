@@ -67,6 +67,12 @@ En el panel de Supabase, abre **SQL Editor** → **New query** y ejecuta,
     — guarda el código del paciente y, en una modificación, solo qué
     columnas cambiaron (no sus valores).
 
+12. `12_limpiar_datos_de_prueba.sql` — **opcional, solo cuando quieras
+    vaciar los pacientes de prueba.** Borra pacientes (y por cascada sus
+    mediciones, indicadores y planes) y sus filas de bitácora; conserva
+    comunidades, usuarios, roles, esquema y políticas. Trae un paso de
+    conteos para revisar antes de borrar. Es irreversible.
+
 Los scripts del 4 en adelante están escritos para aplicarse sobre una
 base que ya tiene datos — puedes correrlos aunque ya hayas ejecutado una
 versión anterior del proyecto.
@@ -229,6 +235,7 @@ src/
     RutaProtegida.jsx          Candado de pantalla por rol (RF-13)
     EstadoSincronizacion.jsx   Aviso global de mediciones pendientes, con detalle por registro (RF-12)
     Interfaz.jsx             Barra, campos, botones, insignias, selector múltiple
+    Iconos.jsx               Íconos SVG de línea del panel (currentColor) y flecha circular
   paginas/
     Ingreso.jsx
     Panel.jsx                Panel resumen — pantalla de entrada
@@ -245,7 +252,8 @@ src/
 public/
   manifest.webmanifest    Metadatos de instalación — RNF-07
   sw.js                    Service Worker, cachea el cascarón de la app — RNF-07
-  icono-192.png / icono-512.png / icono-180.png
+  favicon.svg              Favicon (bowl con hojas)
+  icono-192.png / icono-512.png / icono-180.png / icono-512-maskable.png
 
 pruebas/
   validar-oms.mjs           Suite de validación del motor de puntajes Z
@@ -255,6 +263,15 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
 ```
 
 ## Ajustes de localización (post-entrega)
+
+- **Interfaz**: tipografía Nunito Sans en toda la app (una sola familia,
+  números tabulares para fechas y códigos; se cargan desde Google Fonts en
+  `index.html` y se definen en las variables `--fuente-*` de `estilos.css`).
+  Los accesos del panel usan íconos SVG de línea (`componentes/Iconos.jsx`)
+  en lugar de emojis y una flecha dentro de un círculo. El favicon y los
+  íconos de instalación son un bowl con hojas (`public/favicon.svg`); el
+  Service Worker subió a `cascaron-v2` para que los dispositivos que ya
+  instalaron la app reciban los íconos nuevos.
 
 - **Fechas en DD/MM/AAAA**: `src/lib/formato.js` (`fechaCorta`, `fechaHoraCorta`)
   es la única fuente de formato de fecha en toda la app — se cambió ahí,
@@ -431,3 +448,24 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
   propósito — el personal necesita identificar al niño correcto — la
   minimización se aplicó donde el dato no aportaba nada al propósito del
   registro (trazabilidad de acciones, no consulta clínica).
+
+## Herramientas de carga de datos
+
+`herramientas/importar_cuadernillos.mjs` convierte la transcripción de los
+cuadernillos (CSV, una fila por medición; plantilla en
+`herramientas/plantilla_cuadernillos.csv`) en un script SQL para el SQL
+Editor de Supabase:
+
+```
+node herramientas/importar_cuadernillos.mjs datos.csv --inicio 1
+```
+
+Los puntajes Z y la clasificación se calculan con las mismas funciones que
+usa la app (`src/lib/oms/`), porque la base de datos no los calcula: sin
+ellos, los pacientes importados aparecerían sin estado nutricional. Valida
+fechas, rangos de peso/talla y sexo antes de escribir nada; el SQL generado
+es una transacción que además verifica que cada comunidad exista en el
+catálogo. `--inicio` debe ser (total actual de pacientes + 1) para seguir la
+numeración SPS-AAAA-NNNN que usa la app. Probado contra PostgreSQL con el
+esquema real (importar, limpiar con el script 12, y rechazo de comunidad
+inexistente).

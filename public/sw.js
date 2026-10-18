@@ -9,7 +9,7 @@
 // próxima entrega"). Sin este Service Worker, un navegador no ofrece
 // instalar la app aunque tenga manifest.webmanifest.
 
-const CACHE = 'monitoreo-nutricional-cascaron-v1'
+const CACHE = 'monitoreo-nutricional-cascaron-v2'
 
 const CASCARON = [
   '/',
@@ -17,6 +17,8 @@ const CASCARON = [
   '/manifest.webmanifest',
   '/icono-192.png',
   '/icono-512.png',
+  '/icono-512-maskable.png',
+  '/favicon.svg',
 ]
 
 self.addEventListener('install', (evento) => {

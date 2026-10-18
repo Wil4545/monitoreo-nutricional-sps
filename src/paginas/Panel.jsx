@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { Aviso, Barra, Cargando } from '../componentes/Interfaz.jsx'
+import { IconoSalir, IconoBitacora, IconoFlecha, IconoMapa, IconoPacientes, IconoReportes } from '../componentes/Iconos.jsx'
 import { ETIQUETA_SEVERIDAD } from '../lib/oms/clasificacion.js'
 import { conTiempoLimite, esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 import { fechaHoraCorta } from '../lib/formato.js'
@@ -81,7 +82,7 @@ export default function Panel() {
         titulo="Panel"
         accion={
           <button className="barra__volver" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión">
-            ⏻
+            <IconoSalir />
           </button>
         }
       />
@@ -172,42 +173,42 @@ export default function Panel() {
             )}
 
             <Link className="enlace-panel" to="/pacientes">
-              <span className="enlace-panel__icono" aria-hidden="true">👥</span>
+              <span className="enlace-panel__icono"><IconoPacientes /></span>
               <div className="lista__cuerpo">
                 <div className="lista__nombre">Ver todos los pacientes</div>
                 <div className="lista__meta">Buscar, registrar y dar seguimiento</div>
               </div>
-              <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+              <span className="enlace-panel__flecha"><IconoFlecha /></span>
             </Link>
 
             <Link className="enlace-panel" to="/mapa">
-              <span className="enlace-panel__icono" aria-hidden="true">🗺️</span>
+              <span className="enlace-panel__icono"><IconoMapa /></span>
               <div className="lista__cuerpo">
                 <div className="lista__nombre">Mapa</div>
                 <div className="lista__meta">Distribución geográfica y mapa de calor</div>
               </div>
-              <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+              <span className="enlace-panel__flecha"><IconoFlecha /></span>
             </Link>
 
             {[3, 4, 5].includes(perfil?.rol_id) && (
               <Link className="enlace-panel" to="/reportes">
-                <span className="enlace-panel__icono" aria-hidden="true">📊</span>
+                <span className="enlace-panel__icono"><IconoReportes /></span>
                 <div className="lista__cuerpo">
                   <div className="lista__nombre">Reportes de control</div>
                   <div className="lista__meta">Brecha nutricional por comunidad y tiempos de respuesta</div>
                 </div>
-                <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+                <span className="enlace-panel__flecha"><IconoFlecha /></span>
               </Link>
             )}
 
             {[4, 5].includes(perfil?.rol_id) && (
               <Link className="enlace-panel" to="/auditoria">
-                <span className="enlace-panel__icono" aria-hidden="true">🕓</span>
+                <span className="enlace-panel__icono"><IconoBitacora /></span>
                 <div className="lista__cuerpo">
                   <div className="lista__nombre">Bitácora de auditoría</div>
                   <div className="lista__meta">Altas y modificaciones registradas por el sistema</div>
                 </div>
-                <span className="enlace-panel__flecha" aria-hidden="true">→</span>
+                <span className="enlace-panel__flecha"><IconoFlecha /></span>
               </Link>
             )}
           </>
