@@ -270,6 +270,14 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
 
 ## Ajustes de localización (post-entrega)
 
+- **Sugerencia de alimentos según la edad** (`REGLAS_POR_EDAD` en
+  `src/lib/nutricion.js`): menores de 6 meses → solo lactancia materna
+  (sin alimentos ni menú); 6–11 meses → sin leche de vaca ni semillas, con
+  indicación de puré/machacado; 12 meses a 4 años → semillas siempre
+  molidas. Las reglas están en una tabla para que la nutricionista las
+  revise y ajuste; **están pendientes de su validación clínica**. La
+  indicación se muestra en pantalla y en el PDF del plan.
+
 - **Interfaz**: tipografía Nunito Sans en toda la app (una sola familia,
   números tabulares para fechas y códigos; se cargan desde Google Fonts en
   `index.html` y se definen en las variables `--fuente-*` de `estilos.css`).

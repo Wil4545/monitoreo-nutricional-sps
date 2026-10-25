@@ -187,6 +187,19 @@ export function descargarPlanPdf({ paciente, plan }) {
     y += 10
   }
 
+  // ---- indicación según la edad del paciente -----------------------------------------
+  const nota = plan.sugerencia?.nota
+  if (nota) {
+    const ls = partir(nota, ANCHO - 32, 9.5)
+    const h = ls.length * 12.5 + 20
+    asegurar(h + 16)
+    rect(MARGEN, y, ANCHO, h, 6, tinte(COLOR_MACRO['Energía (calorías)'], 0.88))
+    relleno(COLOR_MACRO['Energía (calorías)'])
+    doc.rect(MARGEN, y + 6, 3, h - 12, 'F')
+    texto(ls, MARGEN + 16, y + 17, { size: 9.5, color: TINTA })
+    y += h + 20
+  }
+
   // ---- necesidades reforzadas ----------------------------------------------------------
   const macros = plan.macronutrientes_etiquetas ?? plan.macronutrientes ?? []
   if (macros.length) {
@@ -232,7 +245,9 @@ export function descargarPlanPdf({ paciente, plan }) {
   // ---- menú-guía ---------------------------------------------------------------------------------
   const menu = plan.sugerencia?.menu ?? []
   if (menu.length) {
-    asegurar(70)
+    // El menú (5 filas) se mantiene junto: si no cabe completo, pasa entero
+    // a la página siguiente en vez de dejar una sola fila suelta.
+    asegurar(10 + menu.length * 36)
     titulo('Menú-guía sugerido')
     menu.forEach((it, i) => {
       asegurar(36)

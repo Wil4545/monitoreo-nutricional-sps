@@ -47,6 +47,49 @@ export const MACRONUTRIENTES = [
   },
 ]
 
+/**
+ * Reglas por edad. Son criterios clínicos de seguridad, así que viven en
+ * una tabla para que la nutricionista las pueda revisar y ajustar sin
+ * tocar el algoritmo. PENDIENTE de validar con ella antes de usarlas con
+ * pacientes reales.
+ *
+ *  - hastaMeses: la regla aplica a pacientes con menos de esa edad (en
+ *    meses); se usa la primera que cumpla.
+ *  - sinAlimentos: no se sugieren alimentos (lactancia materna exclusiva).
+ *  - excluir: alimentos que no se ofrecen a esa edad.
+ *  - sustituir: alimento → versión segura para esa edad.
+ *  - nota: texto que se muestra en pantalla y en el PDF.
+ */
+const SEMILLA_SEGURA = { 'Semilla de ayote tostada': 'Semilla de ayote tostada y molida' }
+export const REGLAS_POR_EDAD = [
+  {
+    hastaMeses: 6,
+    sinAlimentos: true,
+    nota: 'Menor de 6 meses: lactancia materna exclusiva y a libre demanda; no se sugieren alimentos complementarios.',
+  },
+  {
+    hastaMeses: 12,
+    excluir: ['Leche', 'Semilla de ayote tostada'],
+    nota: 'De 6 a 11 meses: continuar la lactancia materna y ofrecer los alimentos suaves, en puré o bien machacados, en porciones pequeñas. No dar leche de vaca como bebida principal antes del año ni semillas enteras.',
+  },
+  {
+    hastaMeses: 24,
+    sustituir: SEMILLA_SEGURA,
+    nota: 'De 12 a 23 meses: continuar la lactancia materna; alimentos blandos en trozos pequeños. Las semillas siempre molidas, por el riesgo de atragantamiento.',
+  },
+  {
+    hastaMeses: 60,
+    sustituir: SEMILLA_SEGURA,
+    nota: 'De 2 a 4 años: alimentos en trozos pequeños; las semillas siempre molidas, por el riesgo de atragantamiento.',
+  },
+]
+
+/** Regla que corresponde a una edad en meses (o null si no hay una). */
+export function reglaPorEdad(edadMeses) {
+  if (edadMeses == null || Number.isNaN(edadMeses)) return null
+  return REGLAS_POR_EDAD.find((r) => edadMeses < r.hastaMeses) ?? null
+}
+
 const COMIDAS = ['Desayuno', 'Refacción matutina', 'Almuerzo', 'Refacción vespertina', 'Cena']
 
 /**
@@ -81,8 +124,22 @@ export function sugerirMacronutrientes(dictamen) {
  * tiempos, repartiendo los alimentos elegidos sin repetir mientras
  * alcancen; si sobran tiempos de comida, se vuelve a empezar la lista.
  */
-export function generarSugerencia(macroIds) {
-  const seleccionados = MACRONUTRIENTES.filter((m) => macroIds.includes(m.id))
+export function generarSugerencia(macroIds, edadMeses = null) {
+  const regla = reglaPorEdad(edadMeses)
+  if (regla?.sinAlimentos) {
+    return { alimentosPorMacro: [], menu: [], nota: regla.nota }
+  }
+
+  // Adapta la lista a la edad: quita lo que no se ofrece y sustituye por
+  // la versión segura. Si un nutriente se queda sin alimentos, se omite.
+  const adaptar = (lista) => lista
+    .filter((a) => !regla?.excluir?.includes(a))
+    .map((a) => regla?.sustituir?.[a] ?? a)
+
+  const seleccionados = MACRONUTRIENTES
+    .filter((m) => macroIds.includes(m.id))
+    .map((m) => ({ ...m, alimentos: adaptar(m.alimentos) }))
+    .filter((m) => m.alimentos.length > 0)
 
   const alimentosPorMacro = seleccionados.map((m) => ({
     macro: m.etiqueta,
@@ -107,7 +164,7 @@ export function generarSugerencia(macroIds) {
     return { comida, alimento: item.alimento, macro: item.macro }
   })
 
-  return { alimentosPorMacro, menu }
+  return { alimentosPorMacro, menu, ...(regla ? { nota: regla.nota } : {}) }
 }
 
 export function etiquetasDeMacros(macroIds) {

@@ -4,14 +4,15 @@ import { supabase } from '../lib/supabase.js'
 import { useSesion } from '../contexto/Sesion.jsx'
 import { asignarPlan, finalizarPlan, planesDePaciente } from '../lib/registro.js'
 import { clasificar } from '../lib/oms/clasificacion.js'
+import { edadEnMeses } from '../lib/oms/zscore.js'
 import {
-  MACRONUTRIENTES, etiquetasDeMacros, generarSugerencia, sugerirMacronutrientes,
+  MACRONUTRIENTES, etiquetasDeMacros, generarSugerencia, reglaPorEdad, sugerirMacronutrientes,
 } from '../lib/nutricion.js'
 import { descargarPlanPdf } from '../lib/pdfPlan.js'
 import {
   Aviso, Barra, BarraAccion, Campo, Cargando, SelectorMultiple,
 } from '../componentes/Interfaz.jsx'
-import { fechaCorta, hoyISO } from '../lib/formato.js'
+import { edadLegible, fechaCorta, hoyISO } from '../lib/formato.js'
 import { conTiempoLimite, mensajeErrorRed } from '../lib/offline.js'
 
 /**
@@ -53,7 +54,7 @@ export default function PlanesAlimentarios() {
   useEffect(() => {
     conTiempoLimite(supabase
       .from('paciente')
-      .select('id, codigo, nombre, apellido, comunidad(nombre)')
+      .select('id, codigo, nombre, apellido, fecha_nacimiento, comunidad(nombre)')
       .eq('id', id)
       .single())
       .then(({ data, error }) => {
@@ -98,16 +99,27 @@ export default function PlanesAlimentarios() {
 
   const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }))
 
+  // Edad del paciente hoy: la sugerencia se adapta a ella (ver
+  // REGLAS_POR_EDAD en lib/nutricion.js).
+  const edadMeses = paciente?.fecha_nacimiento ? edadEnMeses(paciente.fecha_nacimiento, hoyISO()) : null
+
   function generar() {
-    if (macros.length === 0) {
+    // Menor de 6 meses: no hay alimentos que sugerir, así que no se exige
+    // elegir nutrientes.
+    const soloLactancia = reglaPorEdad(edadMeses)?.sinAlimentos
+    if (macros.length === 0 && !soloLactancia) {
       setError('Marca al menos un macronutriente para generar la sugerencia.')
       return
     }
     setError('')
-    const s = generarSugerencia(macros)
+    const s = generarSugerencia(macros, edadMeses)
     setSugerencia(s)
+    if (soloLactancia) setMacros([])
     if (!f.nombre.trim()) {
-      setF((v) => ({ ...v, nombre: `Refuerzo de ${etiquetasDeMacros(macros).join(', ')}` }))
+      setF((v) => ({
+        ...v,
+        nombre: soloLactancia ? 'Lactancia materna exclusiva' : `Refuerzo de ${etiquetasDeMacros(macros).join(', ')}`,
+      }))
     }
   }
 
@@ -220,6 +232,12 @@ export default function PlanesAlimentarios() {
                 />
               </Campo>
 
+              {edadMeses != null && (
+                <p className="campo__ayuda" style={{ marginBottom: '0.6rem' }}>
+                  Edad del paciente: {edadLegible(edadMeses)}. La sugerencia se adapta a su edad.
+                </p>
+              )}
+
               <button type="button" className="boton boton--secundario" onClick={generar}>
                 Generar sugerencia
               </button>
@@ -227,7 +245,8 @@ export default function PlanesAlimentarios() {
 
             {sugerencia && (
               <div className="tarjeta">
-                <p className="eyebrow">Alimentos sugeridos</p>
+                <Aviso tipo="alerta">{sugerencia.nota}</Aviso>
+                {sugerencia.alimentosPorMacro.length > 0 && <p className="eyebrow">Alimentos sugeridos</p>}
                 <ul className="lista">
                   {sugerencia.alimentosPorMacro.map((g) => (
                     <li key={g.macro} className="lista__fila" style={{ cursor: 'default' }}>
@@ -239,7 +258,9 @@ export default function PlanesAlimentarios() {
                   ))}
                 </ul>
 
-                <p className="eyebrow" style={{ marginTop: '1rem' }}>Menú-guía (5 tiempos)</p>
+                {sugerencia.menu.length > 0 && (
+                  <p className="eyebrow" style={{ marginTop: '1rem' }}>Menú-guía (5 tiempos)</p>
+                )}
                 <ul className="lista">
                   {sugerencia.menu.map((item, i) => (
                     <li key={i} className="lista__fila" style={{ cursor: 'default' }}>
