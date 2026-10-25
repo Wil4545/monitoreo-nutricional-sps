@@ -2,6 +2,7 @@ import { supabase } from './supabase.js'
 import { calcularIndicadores } from './oms/zscore.js'
 import { clasificar } from './oms/clasificacion.js'
 import { conTiempoLimite } from './offline.js'
+import { hoyISO } from './formato.js'
 
 /**
  * Registra una medición y su indicador nutricional derivado.
@@ -185,7 +186,7 @@ export async function planesDePaciente(pacienteId) {
   const { data, error } = await conTiempoLimite(supabase
     .from('plan_alimentario')
     .select(
-      'id, nombre, descripcion, costo_diario, fecha_inicio, fecha_fin, ' +
+      'id, nombre, descripcion, costo_diario, fecha_inicio, fecha_fin, finalizado_en, ' +
       'creado_en, macronutrientes, menu_sugerido, usuario(nombre)',
     )
     .eq('paciente_id', pacienteId)
@@ -217,11 +218,29 @@ export async function asignarPlan({ pacienteId, plan, usuarioId }) {
   return { ...data, sugerencia: data.menu_sugerido ?? null }
 }
 
-/** Marca un plan como finalizado hoy, sin borrar su historial. */
-export async function finalizarPlan(planId) {
-  const { error } = await conTiempoLimite(supabase
+/**
+ * Marca un plan como finalizado hoy, sin borrar su historial.
+ *
+ * Con RLS, un UPDATE que ninguna política permite no devuelve error: solo
+ * afecta 0 filas. Por eso se pide la fila de vuelta (`select`) y, si no
+ * llegó ninguna, se avisa en vez de aparentar que funcionó.
+ */
+export async function finalizarPlan(planId, fechaInicio) {
+  const hoy = hoyISO()
+  const { data, error } = await conTiempoLimite(supabase
     .from('plan_alimentario')
-    .update({ fecha_fin: new Date().toISOString().slice(0, 10) })
-    .eq('id', planId))
+    .update({
+      finalizado_en: new Date().toISOString(),
+      // Un plan que aún no empezaba no puede terminar antes de su inicio.
+      fecha_fin: fechaInicio && fechaInicio > hoy ? fechaInicio : hoy,
+    })
+    .eq('id', planId)
+    .select('id'))
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error(
+      'No se pudo finalizar el plan: la base de datos no permitió el cambio. ' +
+      'Falta ejecutar supabase/13_finalizar_plan.sql en Supabase.',
+    )
+  }
 }

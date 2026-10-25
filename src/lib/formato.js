@@ -41,7 +41,13 @@ export function formatoZ(z) {
   return (z > 0 ? '+' : '') + z.toFixed(2)
 }
 
-export const hoyISO = () => new Date().toISOString().slice(0, 10)
+// Fecha de HOY en la zona horaria del dispositivo (no en UTC): en
+// Guatemala (UTC-6), `toISOString()` ya devuelve "mañana" desde las 6 p. m.
+export const hoyISO = () => {
+  const d = new Date()
+  const dos = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`
+}
 
 /** Código correlativo legible para el paciente: SPS-2026-0001 */
 export function generarCodigo(consecutivo) {

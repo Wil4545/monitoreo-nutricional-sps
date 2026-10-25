@@ -29,8 +29,8 @@ import { conTiempoLimite, mensajeErrorRed } from '../lib/offline.js'
  * (01_schema.sql); `macronutrientes` y `menu_sugerido` se agregaron en
  * 10_plan_alimentario_estructura.sql para soportar este generador.
  *
- * "Finalizar" no borra el plan — pone `fecha_fin = hoy` y lo deja en el
- * historial, igual que un plan cerrado en papel no se tacha, se archiva.
+ * "Finalizar" no borra el plan — pone `finalizado_en` y `fecha_fin = hoy`
+ * (13_finalizar_plan.sql) y lo deja en el historial, igual que un plan cerrado en papel no se tacha, se archiva.
  */
 export default function PlanesAlimentarios() {
   const { id } = useParams()
@@ -133,9 +133,9 @@ export default function PlanesAlimentarios() {
     }
   }
 
-  async function finalizar(planId) {
+  async function finalizar(plan) {
     try {
-      await finalizarPlan(planId)
+      await finalizarPlan(plan.id, plan.fecha_inicio)
       cargarPlanes()
     } catch (err) {
       setError(mensajeErrorRed(err, 'finalizar el plan'))
@@ -169,8 +169,11 @@ export default function PlanesAlimentarios() {
     )
   }
 
-  const vigentes = planes.filter((p) => !p.fecha_fin || p.fecha_fin >= hoyISO())
-  const finalizados = planes.filter((p) => p.fecha_fin && p.fecha_fin < hoyISO())
+  // Vigente = sin cierre manual y sin fecha de fin vencida (la fecha de fin
+  // es inclusiva: el plan sigue vigente durante ese día).
+  const estaVigente = (p) => !p.finalizado_en && (!p.fecha_fin || p.fecha_fin >= hoyISO())
+  const vigentes = planes.filter(estaVigente)
+  const finalizados = planes.filter((p) => !estaVigente(p))
 
   return (
     <div className="marco">
@@ -315,7 +318,7 @@ export default function PlanesAlimentarios() {
                     <button type="button" className="boton boton--secundario" onClick={() => descargar(p)}>
                       PDF
                     </button>
-                    <button type="button" className="boton boton--secundario" onClick={() => finalizar(p.id)}>
+                    <button type="button" className="boton boton--secundario" onClick={() => finalizar(p)}>
                       Finalizar
                     </button>
                   </div>

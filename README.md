@@ -73,6 +73,12 @@ En el panel de Supabase, abre **SQL Editor** → **New query** y ejecuta,
     comunidades, usuarios, roles, esquema y políticas. Trae un paso de
     conteos para revisar antes de borrar. Es irreversible.
 
+13. `13_finalizar_plan.sql` — **necesario para el botón "Finalizar" de los
+    planes alimentarios.** Agrega la política de actualización que
+    faltaba en `plan_alimentario` (sin ella, Supabase ignoraba el cambio
+    sin dar error) y la columna `finalizado_en`. Seguro de correr varias
+    veces.
+
 Los scripts del 4 en adelante están escritos para aplicarse sobre una
 base que ya tiene datos — puedes correrlos aunque ya hayas ejecutado una
 versión anterior del proyecto.
