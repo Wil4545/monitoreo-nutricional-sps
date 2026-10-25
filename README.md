@@ -223,7 +223,7 @@ src/
     supabase.js       Cliente de conexión
     registro.js        Mediciones, historial, reportes, digitalización y planes alimentarios (RF-09, RF-10)
     nutricion.js        Catálogo de alimentos y generador de menú-guía (RF-10)
-    pdfPlan.js           Genera el PDF descargable del plan (RF-10)
+    pdfPlan.js           Genera el PDF descargable del plan (RF-10): banner, tarjetas por nutriente y menú; fluye a más páginas si hace falta
     offline.js           Cola de mediciones sin conexión y caché de lectura (RF-11, RF-12)
     precarga.js           Descarga ficha + historial de todos los pacientes para brigadas (RF-11, RF-12)
     peso.js              Conversión kg <-> libras/onzas
