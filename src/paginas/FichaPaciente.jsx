@@ -5,6 +5,7 @@ import { historial } from '../lib/registro.js'
 import GraficoTrayectoria from '../componentes/GraficoTrayectoria.jsx'
 import { Aviso, Barra, BarraAccion, Cargando, Insignia } from '../componentes/Interfaz.jsx'
 import { edadEnMeses } from '../lib/oms/zscore.js'
+import { valoracionNormativa } from '../lib/oms/clasificacion.js'
 import { edadLegible, fechaCorta, fechaHoraCorta, formatoZ, hoyISO } from '../lib/formato.js'
 import { conTiempoLimite, esErrorDeRed, guardarEnCache, leerDeCache, mensajeErrorRed } from '../lib/offline.js'
 
@@ -159,6 +160,15 @@ export default function FichaPaciente() {
             <p style={{ margin: '0.75rem 0 0', fontSize: '0.9rem' }}>
               {ultima.clasificacion}
             </p>
+            {(() => {
+              const v = valoracionNormativa({ zPesoTalla: ultima.z_peso_talla, zTallaEdad: ultima.z_talla_edad })
+              return v ? (
+                <p className="lista__meta" style={{ marginTop: '0.35rem' }}>
+                  <strong>{v.sinAguda ? 'Fuera de riesgo agudo según la norma nacional. ' : 'Norma nacional: '}</strong>
+                  {v.mensaje}
+                </p>
+              ) : null
+            })()}
             <p className="lista__meta" style={{ marginTop: '0.35rem' }}>
               {ultima.peso_kg} kg · {ultima.talla_cm} cm ·{' '}
               {ultima.medido_acostado ? 'medido acostado' : 'medido de pie'}

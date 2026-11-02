@@ -93,3 +93,39 @@ export function clasificar({ zPesoEdad, zTallaEdad, zPesoTalla }) {
 
   return { pesoEdad, tallaEdad, pesoTalla, clasificacion, severidad }
 }
+
+/**
+ * Valoración según la norma nacional (MSPAS) — se calcula al leer, no se
+ * guarda, para no alterar los registros ni la clasificación de la OMS.
+ *
+ * La desnutrición aguda se define por peso/talla < −2 DE; con ≥ −2 DE el
+ * niño se considera estable y lleva control preventivo (entrevista a la
+ * nutricionista, noviembre de 2026). La talla baja (retardo de
+ * crecimiento) no es una urgencia: se vigila el ritmo de crecimiento.
+ * La aplicación no registra signos clínicos (edema, deshidratación,
+ * respiración agitada), por lo que nunca declara un "caso crítico":
+ * solo avisa que con P/T < −3 DE se requiere valoración clínica.
+ *
+ * @returns {{sinAguda:boolean|null, mensaje:string}|null}
+ */
+export function valoracionNormativa({ zPesoTalla, zTallaEdad }) {
+  const pt = zPesoTalla == null ? null : Number(zPesoTalla)
+  const te = zTallaEdad == null ? null : Number(zTallaEdad)
+  if (pt == null || Number.isNaN(pt)) return null
+  if (pt < -3) {
+    return {
+      sinAguda: false,
+      mensaje: 'Desnutrición aguda severa por antropometría: requiere valoración clínica (signos de deshidratación, respiración agitada, edema) para decidir la referencia.',
+    }
+  }
+  if (pt < -2) {
+    return { sinAguda: false, mensaje: 'Desnutrición aguda moderada: seguimiento según el protocolo de desnutrición aguda.' }
+  }
+  const retardo = te != null && !Number.isNaN(te) && te < -2
+  return {
+    sinAguda: true,
+    mensaje: retardo
+      ? 'Sin desnutrición aguda (P/T ≥ −2 DE): control preventivo según la norma nacional. La talla baja se vigila por su ritmo de crecimiento, no es una urgencia.'
+      : 'Sin desnutrición aguda (P/T ≥ −2 DE): control preventivo según la norma nacional.',
+  }
+}

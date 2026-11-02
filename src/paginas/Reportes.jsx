@@ -8,7 +8,7 @@ import { Aviso, Barra, Cargando, Insignia, Campo } from '../componentes/Interfaz
 import { fechaCorta, fechaHoraCorta } from '../lib/formato.js'
 import { mensajeErrorRed } from '../lib/offline.js'
 
-const META_DIGITALIZACION = 70 // meta a 6 meses, Sección 1.2.3
+const META_DIGITALIZACION = 60 // meta a 6 meses, Sección 1.2.3
 
 /**
  * Reportes de control — RF-09 (Sección 4.2.1, 4.3.2).
@@ -17,7 +17,7 @@ const META_DIGITALIZACION = 70 // meta a 6 meses, Sección 1.2.3
  * - Brecha nutricional por comunidad (priorizar rutas de brigadas).
  * - Tiempo de respuesta ante casos severos — el indicador con el que tu
  *   hipótesis promete una reducción del 50% (Sección 1.2.1).
- * - Registros digitalizados — avance hacia la meta de 70% (Sección 1.2.3).
+ * - Registros digitalizados — avance hacia la meta de 60% (Sección 1.2.3).
  * - Sala situacional digital: se implementó dentro de Mapa.jsx (no aquí),
  *   porque es justamente mapa de calor + indicadores agregados en tiempo
  *   real — lo que esa pantalla ya hace. Duplicarla en una página aparte

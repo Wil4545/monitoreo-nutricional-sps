@@ -3,11 +3,11 @@
 // Alcance deliberadamente acotado: cachea el cascarón de la aplicación
 // (HTML, JS, CSS, fuentes, iconos) para que el navegador pueda instalarla
 // y para que abra más rápido en una conexión intermitente. NO cachea
-// datos de Supabase ni implementa cola de escritura sin conexión — eso
-// es RF-11/RF-12 (operación offline + sincronización), que quedó fuera
-// de esta entrega por su riesgo técnico (ver README, "Pendiente para la
-// próxima entrega"). Sin este Service Worker, un navegador no ofrece
-// instalar la app aunque tenga manifest.webmanifest.
+// datos de Supabase. La cola de mediciones sin conexión y la copia de
+// lectura de pacientes viven en src/lib/offline.js (localStorage, sin
+// cifrar), no en este Service Worker (RF-11/RF-12, alcance acotado: ver
+// README). Sin este Service Worker, un navegador no ofrece instalar la
+// app aunque tenga manifest.webmanifest.
 
 const CACHE = 'monitoreo-nutricional-cascaron-v2'
 

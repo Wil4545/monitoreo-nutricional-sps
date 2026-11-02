@@ -334,7 +334,7 @@ vercel.json / netlify.toml  Reescritura SPA para desplegar en producción
     cuántos se atendieron de verdad en un periodo — ese número vive en
     el SIGSA-2 físico, fuera del sistema — así que se captura a mano
     (periodo + total atendido) y el sistema calcula el porcentaje contra
-    la meta del 70% (Sección 1.2.3). Cada medición queda guardada como
+    la meta del 60% (Sección 1.2.3). Cada medición queda guardada como
     una fila más en `reporte` (misma tabla que ya usan los otros
     reportes), con el cálculo ya resuelto, para que el histórico no
     cambie si después se da de alta a más pacientes.

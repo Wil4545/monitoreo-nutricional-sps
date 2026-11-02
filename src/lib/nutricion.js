@@ -68,14 +68,19 @@ export const REGLAS_POR_EDAD = [
     nota: 'Menor de 6 meses: lactancia materna exclusiva y a libre demanda; no se sugieren alimentos complementarios.',
   },
   {
+    hastaMeses: 9,
+    excluir: ['Leche', 'Semilla de ayote tostada'],
+    nota: 'De 6 a 8 meses: continuar la lactancia materna e iniciar la alimentación complementaria con purés y alimentos machacados, de distintos grupos de alimentos, en porciones pequeñas. No dar leche de vaca como bebida principal antes del año ni semillas enteras. Sin azúcar añadida.',
+  },
+  {
     hastaMeses: 12,
     excluir: ['Leche', 'Semilla de ayote tostada'],
-    nota: 'De 6 a 11 meses: continuar la lactancia materna y ofrecer los alimentos suaves, en puré o bien machacados, en porciones pequeñas. No dar leche de vaca como bebida principal antes del año ni semillas enteras.',
+    nota: 'De 9 a 11 meses: continuar la lactancia materna y pasar a texturas más enteras (alimentos picados, en juliana o en cubitos pequeños) para favorecer las habilidades motoras. Se pueden introducir derivados lácteos, cítricos, mariscos y alimentos crudos bien lavados. No dar leche de vaca como bebida principal antes del año ni semillas enteras. Sin azúcar añadida.',
   },
   {
     hastaMeses: 24,
     sustituir: SEMILLA_SEGURA,
-    nota: 'De 12 a 23 meses: continuar la lactancia materna; alimentos blandos en trozos pequeños. Las semillas siempre molidas, por el riesgo de atragantamiento.',
+    nota: 'De 12 a 23 meses: continuar la lactancia materna y ofrecer la misma comida que se prepara en el hogar, en trozos pequeños. Sin azúcar añadida antes de los 2 años. Las semillas siempre molidas, por el riesgo de atragantamiento.',
   },
   {
     hastaMeses: 60,
